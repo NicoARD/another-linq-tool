@@ -1,7 +1,7 @@
 {
   "name": "linq-runner-poc",
   "displayName": "LINQ Runner (POC)",
-  "description": "Run C# scripts like a LINQPad query window (proof of concept, no database yet).",
+  "description": "Run C# scripts as interactive query windows (proof of concept, no database yet).",
   "version": "0.0.1",
   "publisher": "poc",
   "private": true,

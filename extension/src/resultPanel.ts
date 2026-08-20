@@ -48,6 +48,7 @@ function renderHtml(result: ExecuteResult): string {
     .null { color: var(--vscode-descriptionForeground); font-style: italic; }
     .section { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--vscode-descriptionForeground); margin: 4px 0; }
     .console { white-space: pre-wrap; background: var(--vscode-textCodeBlock-background); padding: 8px; border-radius: 4px; font-size: 13px; margin-bottom: 12px; }
+    .dump { margin-bottom: 16px; }
 </style>
 </head>
 <body>
@@ -59,19 +60,36 @@ ${body}
 
 function renderBody(result: ExecuteResult): string {
     const consoleBlock = result.output ? renderConsole(result.output, result.outputTruncated) : '';
+    const dumps = renderDumps(result);
 
-    let main: string;
     if (result.status === 'compileError') {
-        main = renderDiagnostics(result);
-    } else if (result.status === 'runtimeError') {
-        main = renderError(result);
-    } else if (result.status === 'cancelled') {
-        main = `<div class="diag">Execution cancelled.</div>`;
-    } else {
-        main = result.value ? renderNode(result.value) : `<div class="null">no value</div>`;
+        return consoleBlock + dumps + renderDiagnostics(result);
+    }
+    if (result.status === 'runtimeError') {
+        return consoleBlock + dumps + renderError(result);
+    }
+    if (result.status === 'cancelled') {
+        return consoleBlock + dumps + `<div class="diag">Execution cancelled.</div>`;
     }
 
-    return consoleBlock + main;
+    const hasDumps = (result.dumps?.length ?? 0) > 0;
+    let value = '';
+    if (result.value && result.value.kind !== 'null') {
+        value = renderNode(result.value);
+    } else if (!hasDumps) {
+        value = result.value ? renderNode(result.value) : `<div class="null">no value</div>`;
+    }
+
+    return consoleBlock + dumps + value;
+}
+
+function renderDumps(result: ExecuteResult): string {
+    return (result.dumps ?? [])
+        .map((d) => {
+            const heading = d.label ? `<div class="section">${escape(d.label)}</div>` : '';
+            return `<div class="dump">${heading}${renderNode(d.value)}</div>`;
+        })
+        .join('');
 }
 
 function renderConsole(output: string, truncated?: boolean): string {

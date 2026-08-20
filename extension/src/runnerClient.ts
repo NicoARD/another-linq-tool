@@ -41,11 +41,17 @@ export interface ErrorInfo {
 export interface ExecuteResult {
     status: 'success' | 'compileError' | 'runtimeError' | 'cancelled';
     value?: ResultNode;
+    dumps?: DumpNode[];
     diagnostics?: DiagnosticInfo[];
     error?: ErrorInfo;
     output?: string;
     outputTruncated?: boolean;
     elapsedMs: number;
+}
+
+export interface DumpNode {
+    label?: string;
+    value: ResultNode;
 }
 
 /**

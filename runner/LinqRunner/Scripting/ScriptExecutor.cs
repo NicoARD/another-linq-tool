@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Scripting;
 namespace LinqRunner.Scripting;
 
 /// <summary>
-/// Compiles and runs a C# script (LINQPad-style) with Roslyn scripting.
+/// Compiles and runs a C# script with Roslyn scripting.
 /// The value of the final bare expression (a last line without a trailing semicolon) is captured
 /// via <see cref="ScriptState{T}.ReturnValue"/> and serialized for display.
 /// </summary>
@@ -25,6 +25,7 @@ public static class ScriptExecutor
         "System.Collections.Generic",
         "System.Threading.Tasks",
         "System.Text",
+        "LinqRunner.Api",
     ];
 
     public static async Task<ExecuteResult> ExecuteAsync(string source, int rowLimit, CancellationToken cancellationToken)
@@ -33,6 +34,7 @@ public static class ScriptExecutor
 
         var options = ScriptOptions.Default
             .WithReferences(FrameworkReferences.Value)
+            .AddReferences(typeof(Api.DumpExtensions).Assembly)
             .WithImports(DefaultImports);
 
         Script<object> script;
@@ -60,6 +62,7 @@ public static class ScriptExecutor
         // The script's Console output is captured so it (a) never corrupts the stdio RPC channel
         // and (b) can be shown alongside the result. Console.Out/Error are process-global, hence the gate.
         var captured = new BoundedTextWriter(OutputLimit);
+        var sink = new DumpSink(rowLimit);
         var originalOut = Console.Out;
         var originalError = Console.Error;
         await ExecutionGate.WaitAsync(cancellationToken);
@@ -67,12 +70,13 @@ public static class ScriptExecutor
         {
             Console.SetOut(captured);
             Console.SetError(captured);
+            DumpSink.Current = sink;
 
             var state = await script.RunAsync(globals: null, catchException: _ => true, cancellationToken);
 
             if (state.Exception is not null)
             {
-                return Attach(RuntimeError(state.Exception, stopwatch, diagnostics), captured);
+                return Attach(RuntimeError(state.Exception, stopwatch, diagnostics), captured, sink);
             }
 
             return Attach(new ExecuteResult
@@ -81,11 +85,11 @@ public static class ScriptExecutor
                 Value = ResultSerializer.Serialize(state.ReturnValue, rowLimit),
                 Diagnostics = Map(diagnostics, warningsOnly: true),
                 ElapsedMs = stopwatch.ElapsedMilliseconds,
-            }, captured);
+            }, captured, sink);
         }
         catch (OperationCanceledException)
         {
-            return Attach(new ExecuteResult { Status = "cancelled", ElapsedMs = stopwatch.ElapsedMilliseconds }, captured);
+            return Attach(new ExecuteResult { Status = "cancelled", ElapsedMs = stopwatch.ElapsedMilliseconds }, captured, sink);
         }
         catch (CompilationErrorException ex)
         {
@@ -98,23 +102,29 @@ public static class ScriptExecutor
         }
         catch (Exception ex)
         {
-            return Attach(RuntimeError(ex, stopwatch), captured);
+            return Attach(RuntimeError(ex, stopwatch), captured, sink);
         }
         finally
         {
             Console.SetOut(originalOut);
             Console.SetError(originalError);
+            DumpSink.Current = null;
             ExecutionGate.Release();
         }
     }
 
-    private static ExecuteResult Attach(ExecuteResult result, BoundedTextWriter captured)
+    private static ExecuteResult Attach(ExecuteResult result, BoundedTextWriter captured, DumpSink sink)
     {
         var text = captured.ToString();
         if (text.Length > 0)
         {
             result.Output = text;
             result.OutputTruncated = captured.Truncated ? true : null;
+        }
+
+        if (sink.Items.Count > 0)
+        {
+            result.Dumps = sink.Items.ToList();
         }
 
         return result;

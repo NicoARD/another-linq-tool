@@ -15,9 +15,15 @@ internal static class FrameworkReferences
     {
         var tpa = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string ?? string.Empty;
 
+        // Exclude the runner's own assembly; it is added explicitly (with its import) for the Dump API,
+        // which keeps exactly one reference to it and avoids duplicate-reference warnings.
+        var selfPath = typeof(FrameworkReferences).Assembly.Location;
+
         return tpa
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-            .Where(path => path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) && File.Exists(path))
+            .Where(path => path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+                && File.Exists(path)
+                && !string.Equals(path, selfPath, StringComparison.OrdinalIgnoreCase))
             .Select(path =>
             {
                 try

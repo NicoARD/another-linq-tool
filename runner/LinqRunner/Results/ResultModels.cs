@@ -6,11 +6,18 @@ public sealed class ExecuteResult
     // "success" | "compileError" | "runtimeError" | "cancelled"
     public string Status { get; set; } = "success";
     public ResultNode? Value { get; set; }
+    public List<DumpNode>? Dumps { get; set; }
     public List<DiagnosticInfo>? Diagnostics { get; set; }
     public ErrorInfo? Error { get; set; }
     public string? Output { get; set; }
     public bool? OutputTruncated { get; set; }
     public long ElapsedMs { get; set; }
+}
+
+public sealed class DumpNode
+{
+    public string? Label { get; set; }
+    public ResultNode Value { get; set; } = new();
 }
 
 public sealed class DiagnosticInfo

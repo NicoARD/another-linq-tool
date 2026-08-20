@@ -1,4 +1,4 @@
-// LINQPad-style C# script. Press Ctrl+Enter to run.
+// C# query script. Press Ctrl+Enter to run.
 // The value of the final expression (a last line WITHOUT a semicolon) is displayed.
 
 var people = new[]

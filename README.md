@@ -1,6 +1,6 @@
 # LINQ Runner — POC
 
-A proof of concept for a **LINQPad-style C# script runner in VS Code**. Open a `.linq.csx`
+A proof of concept for a **C# script runner in VS Code**. Open a `.linq.csx`
 file, press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, and the whole file is executed as a C# script by a
 .NET runner process. The value of the final expression is shown in a result panel.
 
