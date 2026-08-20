@@ -11,3 +11,5 @@ All notable changes to Another LINQ Tool are documented in this file.
 ## 1.0.1
 
 - Explicitly activate the extension when any contributed command is invoked.
+- Activate after VS Code startup so contributed commands are always registered.
+- Continue activation if legacy profile migration fails.

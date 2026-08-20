@@ -33,6 +33,7 @@
   ],
   "main": "./out/extension.js",
   "activationEvents": [
+    "onStartupFinished",
     "onLanguage:linq-csx",
     "onCommand:linqRunner.runCurrentFile",
     "onCommand:linqRunner.restartRunner",
@@ -144,7 +145,7 @@
     "watch": "tsc -watch -p ./",
     "vscode:prepublish": "npm run build:runner && npm run compile",
     "prepackage": "node ./scripts/check-release-node.js",
-    "package": "vsce package --no-dependencies",
+    "package": "vsce package",
     "release:check": "npm run build:runner && npm run compile && npm run package"
   },
   "devDependencies": {

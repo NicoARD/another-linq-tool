@@ -16,7 +16,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(output);
 
     profiles = new ProfileManager(context.globalState, context.secrets);
-    await profiles.migrateLegacyConfiguration();
+    try {
+        await profiles.migrateLegacyConfiguration();
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        output.appendLine(`Profile migration failed; continuing with current settings: ${message}`);
+    }
 
     statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusBar.command = 'linqRunner.selectProfile';
