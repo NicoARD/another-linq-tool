@@ -65,6 +65,27 @@ The profile editor can import and export JSON profile files. Exported files may 
 
 Connection strings saved through the editor are held in VS Code Secret Storage. Profile names and other non-secret values are stored in the global `linqRunner.*` user settings.
 
+### Choosing the profile per script
+
+Each run uses the **active** profile shown in the status bar (change it with **Another LINQ Tool: Select Profile**). If no profile has been selected, the `linqRunner.defaultProfile` is used.
+
+To override the profile for a single script, add a `@profile` directive as the first line, naming the profile to use:
+
+```csharp
+@profile testmodel
+
+Db.Customers.Where(customer => customer.IsActive).ToList()
+```
+
+The directive may also be written as a comment, and profile names with spaces are supported:
+
+```csharp
+// @profile My Staging DB
+```
+
+The `@profile` line is stripped before the script runs. If the named profile does not exist, the active profile (or the default) is used instead and a warning is shown.
+
+
 The **Run before every script** field accepts C# code that is prepended to each script executed with that profile. Use it for helper methods, variables, or one-time setup statements; it runs in the same script context, so declarations are available to the active script.
 
 ### Settings
