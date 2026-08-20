@@ -6,6 +6,14 @@
   "version": "1.0.0",
   "publisher": "another-linq-tool",
   "license": "CC-BY-NC-4.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NicoARD/another-linq-tool.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NicoARD/another-linq-tool/issues"
+  },
+  "homepage": "https://github.com/NicoARD/another-linq-tool#readme",
   "engines": {
     "vscode": "^1.85.0"
   },
