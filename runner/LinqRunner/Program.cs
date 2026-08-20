@@ -43,11 +43,27 @@ static class Cli
         var assemblies = CollectOption(args, "--assembly");
         var imports = CollectOption(args, "--import");
 
+        var dbRequest = new LinqRunner.Data.DbContextRequest
+        {
+            Context = SingleOption(args, "--context"),
+            Provider = SingleOption(args, "--provider"),
+            ConnectionString = SingleOption(args, "--connection"),
+            FactoryType = SingleOption(args, "--factory-type"),
+            FactoryMethod = SingleOption(args, "--factory-method"),
+        };
+
         var source = await File.ReadAllTextAsync(file);
-        var result = await ScriptExecutor.ExecuteAsync(source, rowLimit, assemblies, imports, CancellationToken.None);
+        var result = await ScriptExecutor.ExecuteAsync(source, rowLimit, assemblies, imports, dbRequest, CancellationToken.None);
 
         Console.WriteLine(JsonConvert.SerializeObject(result, JsonSettings));
         return result.Status == "success" ? 0 : 1;
+    }
+
+    // Returns the value following the given option, or null if absent.
+    static string? SingleOption(string[] args, string option)
+    {
+        var index = Array.IndexOf(args, option);
+        return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
     }
 
     // Collects all values of a repeatable option, e.g. `--assembly a.dll --assembly b.dll`.

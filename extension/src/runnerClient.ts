@@ -54,6 +54,14 @@ export interface DumpNode {
     value: ResultNode;
 }
 
+export interface DbOptions {
+    context?: string;
+    provider?: string;
+    connectionString?: string;
+    contextFactoryType?: string;
+    contextFactoryMethod?: string;
+}
+
 /**
  * Owns the runner child process and a JSON-RPC connection to it over stdio.
  * The process is started lazily on first use and restarted on demand.
@@ -67,11 +75,24 @@ export class RunnerClient {
         private readonly dotnetPath: string,
         private readonly runnerPath: string,
         private readonly log: (message: string) => void,
+        private readonly cwd?: string,
     ) {}
 
-    async execute(source: string, rowLimit: number, assemblies: string[], imports: string[]): Promise<ExecuteResult> {
+    async execute(
+        source: string,
+        rowLimit: number,
+        assemblies: string[],
+        imports: string[],
+        db: DbOptions,
+    ): Promise<ExecuteResult> {
         await this.ensureStarted();
-        return this.connection!.sendRequest<ExecuteResult>('execute', { source, rowLimit, assemblies, imports });
+        return this.connection!.sendRequest<ExecuteResult>('execute', {
+            source,
+            rowLimit,
+            assemblies,
+            imports,
+            ...db,
+        });
     }
 
     async restart(): Promise<void> {
@@ -105,7 +126,7 @@ export class RunnerClient {
 
     private async start(): Promise<void> {
         this.log(`Starting runner: ${this.dotnetPath} ${this.runnerPath}`);
-        const proc = spawn(this.dotnetPath, [this.runnerPath], { stdio: ['pipe', 'pipe', 'pipe'] });
+        const proc = spawn(this.dotnetPath, [this.runnerPath], { stdio: ['pipe', 'pipe', 'pipe'], cwd: this.cwd });
         this.proc = proc;
 
         proc.on('error', (err) => this.log(`Runner failed to start: ${err.message}`));

@@ -11,6 +11,10 @@ internal static class FrameworkReferences
 {
     public static readonly IReadOnlyList<MetadataReference> Value = Build();
 
+    /// <summary>Simple names (no extension) of the framework assemblies, used to avoid re-referencing
+    /// framework DLLs that also appear beside user assemblies.</summary>
+    public static readonly HashSet<string> Names = BuildNames();
+
     private static IReadOnlyList<MetadataReference> Build()
     {
         var tpa = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string ?? string.Empty;
@@ -38,5 +42,17 @@ internal static class FrameworkReferences
             .Where(reference => reference is not null)
             .Cast<MetadataReference>()
             .ToList();
+    }
+
+    private static HashSet<string> BuildNames()
+    {
+        var tpa = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string ?? string.Empty;
+        return tpa
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Where(path => path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            .Select(Path.GetFileNameWithoutExtension)
+            .Where(name => !string.IsNullOrEmpty(name))
+            .Cast<string>()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 }

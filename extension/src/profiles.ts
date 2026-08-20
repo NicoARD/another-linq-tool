@@ -6,7 +6,16 @@ const CONFIG_FILENAME = 'linqrunner.json';
 
 interface ProfilesConfigFile {
     defaultProfile?: string;
-    profiles?: Record<string, { assemblies?: string[]; imports?: string[] }>;
+    profiles?: Record<string, ProfileEntry>;
+}
+
+interface ProfileEntry {
+    assemblies?: string[];
+    imports?: string[];
+    context?: string;
+    provider?: string;
+    connectionString?: string;
+    contextFactory?: { type?: string; method?: string };
 }
 
 export interface ResolvedProfile {
@@ -14,6 +23,11 @@ export interface ResolvedProfile {
     assemblies: string[]; // absolute paths that exist
     imports: string[];
     missing: string[]; // configured paths that do not exist
+    context?: string;
+    provider?: string;
+    connectionString?: string;
+    contextFactoryType?: string;
+    contextFactoryMethod?: string;
 }
 
 /**
@@ -76,7 +90,17 @@ export class ProfileManager {
             }
         }
 
-        return { name, assemblies, imports: raw.imports ?? [], missing };
+        return {
+            name,
+            assemblies,
+            imports: raw.imports ?? [],
+            missing,
+            context: raw.context,
+            provider: raw.provider,
+            connectionString: raw.connectionString,
+            contextFactoryType: raw.contextFactory?.type,
+            contextFactoryMethod: raw.contextFactory?.method,
+        };
     }
 
     private read(): { config: ProfilesConfigFile; dir: string } | undefined {

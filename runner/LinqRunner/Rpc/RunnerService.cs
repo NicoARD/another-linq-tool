@@ -49,6 +49,14 @@ public sealed class RunnerService
             parameters.RowLimit ?? 1000,
             parameters.Assemblies ?? [],
             parameters.Imports ?? [],
+            new Data.DbContextRequest
+            {
+                Context = parameters.Context,
+                Provider = parameters.Provider,
+                ConnectionString = parameters.ConnectionString,
+                FactoryType = parameters.ContextFactoryType,
+                FactoryMethod = parameters.ContextFactoryMethod,
+            },
             cancellationToken);
 
     [JsonRpcMethod("shutdown")]
@@ -76,4 +84,9 @@ public sealed class ExecuteParams
     public int? RowLimit { get; set; }
     public string[]? Assemblies { get; set; }
     public string[]? Imports { get; set; }
+    public string? Context { get; set; }
+    public string? Provider { get; set; }
+    public string? ConnectionString { get; set; }
+    public string? ContextFactoryType { get; set; }
+    public string? ContextFactoryMethod { get; set; }
 }

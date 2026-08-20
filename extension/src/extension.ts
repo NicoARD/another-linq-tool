@@ -69,8 +69,9 @@ function getClient(context: vscode.ExtensionContext): RunnerClient {
     const config = vscode.workspace.getConfiguration('linqRunner');
     const dotnetPath = config.get<string>('dotnetPath', 'dotnet');
     const runnerPath = resolveRunnerPath(context, config.get<string>('runnerPath', ''));
+    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
-    client = new RunnerClient(dotnetPath, runnerPath, (message) => output.appendLine(message));
+    client = new RunnerClient(dotnetPath, runnerPath, (message) => output.appendLine(message), cwd);
     context.subscriptions.push({ dispose: () => client?.dispose() });
     return client;
 }
@@ -129,6 +130,13 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
                     rowLimit,
                     profile?.assemblies ?? [],
                     profile?.imports ?? [],
+                    {
+                        context: profile?.context,
+                        provider: profile?.provider,
+                        connectionString: profile?.connectionString,
+                        contextFactoryType: profile?.contextFactoryType,
+                        contextFactoryMethod: profile?.contextFactoryMethod,
+                    },
                 );
                 ResultPanel.show(result, title);
             } catch (err) {

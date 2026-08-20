@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LinqRunner.Data;
 using LinqRunner.Loading;
 using LinqRunner.Results;
 using Microsoft.CodeAnalysis;
@@ -35,6 +36,7 @@ public static class ScriptExecutor
         int rowLimit,
         IReadOnlyList<string> assemblies,
         IReadOnlyList<string> imports,
+        DbContextRequest dbRequest,
         CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -59,16 +61,45 @@ public static class ScriptExecutor
             assemblyLoader.RegisterDependency(assembly);
         }
 
+        // Build the user's DbContext (if configured) and expose it to the script as the `Db` global.
+        object? dbContext = null;
+        Type? globalsType = null;
+        object? globals = null;
+        var effectiveImports = imports;
+
+        if (dbRequest.IsConfigured)
+        {
+            try
+            {
+                dbContext = DbContextBuilder.Create(dbRequest, loaded.Assemblies);
+            }
+            catch (Exception ex)
+            {
+                return InfrastructureError($"Failed to create DbContext: {ex.InnerException?.Message ?? ex.Message}", ex, stopwatch);
+            }
+
+            globalsType = typeof(Api.ScriptGlobals<>).MakeGenericType(dbContext.GetType());
+            globals = Activator.CreateInstance(globalsType);
+            globalsType.GetField("Db")!.SetValue(globals, dbContext);
+            assemblyLoader.RegisterDependency(dbContext.GetType().Assembly);
+
+            // Ensure EF Core extension methods (ToListAsync, EnsureCreated, ...) are in scope.
+            if (!effectiveImports.Contains("Microsoft.EntityFrameworkCore"))
+            {
+                effectiveImports = [.. effectiveImports, "Microsoft.EntityFrameworkCore"];
+            }
+        }
+
         var options = ScriptOptions.Default
             .WithReferences(FrameworkReferences.Value)
             .AddReferences(typeof(Api.DumpExtensions).Assembly)
             .AddReferences(loaded.References)
-            .WithImports(DefaultImports.Concat(imports));
+            .WithImports(DefaultImports.Concat(effectiveImports));
 
         Script<object> script;
         try
         {
-            script = CSharpScript.Create<object>(source, options, globalsType: null, assemblyLoader: assemblyLoader);
+            script = CSharpScript.Create<object>(source, options, globalsType, assemblyLoader);
         }
         catch (Exception ex)
         {
@@ -79,6 +110,7 @@ public static class ScriptExecutor
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         if (errors.Count > 0)
         {
+            await DisposeContextAsync(dbContext);
             return new ExecuteResult
             {
                 Status = "compileError",
@@ -100,7 +132,7 @@ public static class ScriptExecutor
             Console.SetError(captured);
             DumpSink.Current = sink;
 
-            var state = await script.RunAsync(globals: null, catchException: _ => true, cancellationToken);
+            var state = await script.RunAsync(globals: globals, catchException: _ => true, cancellationToken);
 
             if (state.Exception is not null)
             {
@@ -138,6 +170,21 @@ public static class ScriptExecutor
             Console.SetError(originalError);
             DumpSink.Current = null;
             ExecutionGate.Release();
+            await DisposeContextAsync(dbContext);
+        }
+    }
+
+    // A fresh DbContext is created per execution, so it is disposed as soon as the script finishes.
+    private static async ValueTask DisposeContextAsync(object? dbContext)
+    {
+        switch (dbContext)
+        {
+            case IAsyncDisposable asyncDisposable:
+                await asyncDisposable.DisposeAsync();
+                break;
+            case IDisposable disposable:
+                disposable.Dispose();
+                break;
         }
     }
 
@@ -192,6 +239,13 @@ public static class ScriptExecutor
         foreach (var diagnostic in diagnostics)
         {
             if (diagnostic.Severity == DiagnosticSeverity.Hidden)
+            {
+                continue;
+            }
+
+            // Benign assembly version-unification warnings (common when the app's EF Core references
+            // lower BCL reference assemblies than the running runtime). Suppress the noise.
+            if (diagnostic.Id is "CS1701" or "CS1702" or "CS1705")
             {
                 continue;
             }

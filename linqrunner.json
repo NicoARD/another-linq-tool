@@ -8,6 +8,17 @@
       "imports": [
         "TestModel"
       ]
+    },
+    "testmodel-db": {
+      "assemblies": [
+        "./fixtures/TestModel/bin/Debug/net9.0/TestModel.dll"
+      ],
+      "imports": [
+        "TestModel"
+      ],
+      "context": "TestModel.TestDbContext",
+      "provider": "sqlite",
+      "connectionString": "Data Source=linqrunner-demo.sqlite"
     }
   }
 }

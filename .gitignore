@@ -10,3 +10,6 @@ out/
 # Editor
 .vs/
 *.user
+
+# Local demo database
+*.sqlite

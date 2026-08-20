@@ -1,5 +1,7 @@
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.Loader;
+using LinqRunner.Scripting;
 using Microsoft.CodeAnalysis;
 
 namespace LinqRunner.Loading;
@@ -26,6 +28,9 @@ public static class UserAssemblyLoader
 
     // absolute path -> already-loaded assembly, so repeated executions reuse one instance.
     private static readonly Dictionary<string, Assembly> LoadedByPath = new(StringComparer.OrdinalIgnoreCase);
+
+    // directories the configured assemblies live in, used to probe managed + native dependencies.
+    private static readonly HashSet<string> ProbeDirectories = new(StringComparer.OrdinalIgnoreCase);
 
     private static bool resolverInstalled;
 
@@ -56,6 +61,8 @@ public static class UserAssemblyLoader
                     continue;
                 }
 
+                ProbeDirectories.Add(directory);
+
                 foreach (var dll in Directory.EnumerateFiles(directory, "*.dll"))
                 {
                     ProbeRegistry.TryAdd(Path.GetFileNameWithoutExtension(dll), dll);
@@ -76,8 +83,53 @@ public static class UserAssemblyLoader
                 result.References.Add(MetadataReference.CreateFromImage(bytes));
             }
 
+            // Also reference sibling DLLs that are NOT part of the shared framework (e.g. EF Core, the
+            // provider, other app dependencies) so their types are usable at compile time, not just at
+            // runtime. Framework assemblies are excluded to avoid duplicate references.
+            var referencedPaths = new HashSet<string>(fullPaths, StringComparer.OrdinalIgnoreCase);
+            foreach (var (name, path) in ProbeRegistry)
+            {
+                if (FrameworkReferences.Names.Contains(name) || referencedPaths.Contains(path))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    result.References.Add(MetadataReference.CreateFromImage(File.ReadAllBytes(path)));
+                    referencedPaths.Add(path);
+                }
+                catch
+                {
+                    // Skip anything that isn't a valid managed assembly.
+                }
+            }
+
             return result;
         }
+    }
+
+    /// <summary>Loads an assembly by simple name from the probed directories (used for framework/provider
+    /// assemblies the DbContext builder needs via reflection). Returns null if it cannot be found.</summary>
+    public static Assembly? LoadByName(string simpleName)
+    {
+        lock (Gate)
+        {
+            if (ProbeRegistry.TryGetValue(simpleName, out var path) && File.Exists(path))
+            {
+                if (LoadedByPath.TryGetValue(path, out var existing))
+                {
+                    return existing;
+                }
+
+                var assembly = AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(File.ReadAllBytes(path)));
+                LoadedByPath[path] = assembly;
+                return assembly;
+            }
+        }
+
+        return AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => string.Equals(a.GetName().Name, simpleName, StringComparison.OrdinalIgnoreCase));
     }
 
     private static void InstallResolver()
@@ -112,6 +164,75 @@ public static class UserAssemblyLoader
             return null;
         };
 
+        // Native libraries (e.g. e_sqlite3) are resolved from the app's runtimes/<rid>/native folders,
+        // which the default native search path does not cover for dynamically loaded assemblies.
+        AssemblyLoadContext.Default.ResolvingUnmanagedDll += (assembly, libraryName) =>
+        {
+            lock (Gate)
+            {
+                foreach (var directory in NativeProbeDirectories())
+                {
+                    foreach (var candidate in NativeFileNames(libraryName))
+                    {
+                        var path = Path.Combine(directory, candidate);
+                        if (File.Exists(path) && NativeLibrary.TryLoad(path, out var handle))
+                        {
+                            return handle;
+                        }
+                    }
+                }
+            }
+
+            return IntPtr.Zero;
+        };
+
         resolverInstalled = true;
+    }
+
+    private static IEnumerable<string> NativeProbeDirectories()
+    {
+        var rid = RuntimeIdentifier();
+        foreach (var directory in ProbeDirectories)
+        {
+            yield return directory;
+            var native = Path.Combine(directory, "runtimes", rid, "native");
+            if (Directory.Exists(native))
+            {
+                yield return native;
+            }
+        }
+    }
+
+    private static IEnumerable<string> NativeFileNames(string libraryName)
+    {
+        yield return libraryName;
+        if (OperatingSystem.IsWindows())
+        {
+            yield return libraryName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ? libraryName : libraryName + ".dll";
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            yield return $"lib{libraryName}.dylib";
+        }
+        else
+        {
+            yield return $"lib{libraryName}.so";
+        }
+    }
+
+    private static string RuntimeIdentifier()
+    {
+        var os = OperatingSystem.IsWindows() ? "win"
+            : OperatingSystem.IsMacOS() ? "osx"
+            : "linux";
+        var arch = RuntimeInformation.ProcessArchitecture switch
+        {
+            Architecture.X64 => "x64",
+            Architecture.X86 => "x86",
+            Architecture.Arm64 => "arm64",
+            Architecture.Arm => "arm",
+            _ => "x64",
+        };
+        return $"{os}-{arch}";
     }
 }
