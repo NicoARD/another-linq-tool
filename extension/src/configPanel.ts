@@ -198,7 +198,10 @@ function render() {
                 '<label>Provider</label><select id="provider">' +
                     ['', 'sqlite', 'sqlserver'].map(v => '<option' + ((p.provider || '') === v ? ' selected' : '') + '>' + v + '</option>').join('') +
                 '</select>' +
-                '<label>Connection string</label><input type="text" id="connectionString" value="' + escapeAttr(p.connectionString || '') + '" />' +
+                '<label>Connection string</label><div class="row">' +
+                    '<input type="password" class="grow" id="connectionString" value="' + escapeAttr(p.connectionString || '') + '" autocomplete="off" />' +
+                    '<button class="secondary" type="button" id="toggleConnectionString" title="Show connection string" aria-label="Show connection string">&#128065;</button>' +
+                '</div>' +
                 '<label>Custom factory (optional) — type / method</label>' +
                 '<div class="row">' +
                     '<input type="text" class="grow" id="factoryType" value="' + escapeAttr((p.contextFactory && p.contextFactory.type) || '') + '" placeholder="MyApp.Data.LinqContextFactory" />' +
@@ -233,6 +236,15 @@ function wireEditor() {
     bind('prelude', v => p.prelude = v || undefined);
     bind('context', v => p.context = v || undefined);
     bind('connectionString', v => p.connectionString = v || undefined);
+    const toggleConnectionString = document.getElementById('toggleConnectionString');
+    if (toggleConnectionString) toggleConnectionString.onclick = () => {
+        const input = document.getElementById('connectionString');
+        const showing = input.type === 'text';
+        input.type = showing ? 'password' : 'text';
+        const label = showing ? 'Show connection string' : 'Hide connection string';
+        toggleConnectionString.title = label;
+        toggleConnectionString.setAttribute('aria-label', label);
+    };
     bind('factoryType', v => setFactory(p, 'type', v));
     bind('factoryMethod', v => setFactory(p, 'method', v));
     const provider = document.getElementById('provider');
