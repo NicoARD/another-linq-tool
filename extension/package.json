@@ -1,0 +1,93 @@
+{
+  "name": "linq-runner-poc",
+  "displayName": "LINQ Runner (POC)",
+  "description": "Run C# scripts like a LINQPad query window (proof of concept, no database yet).",
+  "version": "0.0.1",
+  "publisher": "poc",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:linq-csx"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "linq-csx",
+        "aliases": [
+          "LINQ C# Script"
+        ],
+        "extensions": [
+          ".linq.csx",
+          ".csx"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "linqRunner.runCurrentFile",
+        "title": "LINQ: Run Current File"
+      },
+      {
+        "command": "linqRunner.restartRunner",
+        "title": "LINQ: Restart Runner"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "linqRunner.runCurrentFile",
+        "key": "ctrl+enter",
+        "when": "editorTextFocus && resourceExtname == .csx"
+      }
+    ],
+    "menus": {
+      "editor/title/run": [
+        {
+          "command": "linqRunner.runCurrentFile",
+          "when": "resourceExtname == .csx",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "LINQ Runner",
+      "properties": {
+        "linqRunner.dotnetPath": {
+          "type": "string",
+          "default": "dotnet",
+          "description": "Path to the dotnet executable used to launch the runner."
+        },
+        "linqRunner.runnerPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to LinqRunner.dll. When empty, the bundled ../runner build is used."
+        },
+        "linqRunner.rowLimit": {
+          "type": "number",
+          "default": 1000,
+          "description": "Maximum number of rows materialized from a sequence result."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "vscode-jsonrpc": "^8.2.0"
+  }
+}

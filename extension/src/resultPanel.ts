@@ -1,0 +1,140 @@
+import * as vscode from 'vscode';
+import { ExecuteResult, ResultNode } from './runnerClient';
+
+/** Renders an execution result in a reusable, script-free webview panel. */
+export class ResultPanel {
+    private static panel: vscode.WebviewPanel | undefined;
+
+    static show(result: ExecuteResult, title: string): void {
+        if (!this.panel) {
+            this.panel = vscode.window.createWebviewPanel(
+                'linqRunnerResult',
+                'LINQ Result',
+                { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
+                { enableScripts: false, retainContextWhenHidden: true },
+            );
+            this.panel.onDidDispose(() => (this.panel = undefined));
+        }
+
+        this.panel.title = `LINQ Result — ${title}`;
+        this.panel.webview.html = renderHtml(result);
+        this.panel.reveal(vscode.ViewColumn.Beside, true);
+    }
+}
+
+function renderHtml(result: ExecuteResult): string {
+    const body = renderBody(result);
+    const meta = `<div class="meta">${escape(result.status)} · ${result.elapsedMs} ms</div>`;
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';" />
+<style>
+    body { font-family: var(--vscode-editor-font-family, monospace); color: var(--vscode-foreground); padding: 12px; }
+    .meta { color: var(--vscode-descriptionForeground); font-size: 12px; margin-bottom: 12px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid var(--vscode-panel-border, #444); padding: 4px 8px; text-align: left; vertical-align: top; font-size: 13px; }
+    th { background: var(--vscode-editorWidget-background); position: sticky; top: 0; }
+    tr:nth-child(even) td { background: var(--vscode-list-hoverBackground); }
+    .scalar { font-size: 15px; padding: 8px 0; }
+    .kv td:first-child { color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe); white-space: nowrap; }
+    .type { color: var(--vscode-descriptionForeground); font-size: 11px; }
+    .error { color: var(--vscode-errorForeground); }
+    .error pre { white-space: pre-wrap; background: var(--vscode-textCodeBlock-background); padding: 8px; border-radius: 4px; }
+    .diag { color: var(--vscode-editorWarning-foreground); }
+    .truncated { color: var(--vscode-editorWarning-foreground); font-size: 12px; margin-top: 8px; }
+    .null { color: var(--vscode-descriptionForeground); font-style: italic; }
+</style>
+</head>
+<body>
+${meta}
+${body}
+</body>
+</html>`;
+}
+
+function renderBody(result: ExecuteResult): string {
+    if (result.status === 'compileError') {
+        return renderDiagnostics(result);
+    }
+    if (result.status === 'runtimeError') {
+        return renderError(result);
+    }
+    if (result.status === 'cancelled') {
+        return `<div class="diag">Execution cancelled.</div>`;
+    }
+    return result.value ? renderNode(result.value) : `<div class="null">no value</div>`;
+}
+
+function renderNode(node: ResultNode): string {
+    switch (node.kind) {
+        case 'null':
+            return `<div class="null">null</div>`;
+        case 'scalar':
+            return `<div class="scalar">${escape(node.text ?? '')}</div><div class="type">${escape(node.typeName ?? '')}</div>`;
+        case 'object':
+            return renderObject(node);
+        case 'table':
+            return renderTable(node);
+        default:
+            return `<div>${escape(JSON.stringify(node))}</div>`;
+    }
+}
+
+function renderObject(node: ResultNode): string {
+    const rows = (node.properties ?? [])
+        .map(
+            (p) =>
+                `<tr><td>${escape(p.name)}<div class="type">${escape(p.typeName ?? '')}</div></td><td>${escape(
+                    p.value ?? '',
+                )}</td></tr>`,
+        )
+        .join('');
+    return `<div class="type">${escape(node.typeName ?? '')}</div><table class="kv">${rows}</table>`;
+}
+
+function renderTable(node: ResultNode): string {
+    const head = (node.columns ?? []).map((c) => `<th>${escape(c)}</th>`).join('');
+    const rows = (node.rows ?? [])
+        .map((row) => `<tr>${row.map((cell) => `<td>${escape(cell ?? 'null')}</td>`).join('')}</tr>`)
+        .join('');
+    const truncated = node.truncated
+        ? `<div class="truncated">Results truncated at ${node.rowCount} rows.</div>`
+        : '';
+    return `<table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>
+<div class="type">${escape(node.typeName ?? '')} · ${node.rowCount ?? 0} row(s)</div>${truncated}`;
+}
+
+function renderDiagnostics(result: ExecuteResult): string {
+    const items = (result.diagnostics ?? [])
+        .map(
+            (d) =>
+                `<li><span class="diag">${escape(d.severity)} ${escape(d.id)}</span> (line ${d.line + 1}, col ${
+                    d.character + 1
+                }): ${escape(d.message)}</li>`,
+        )
+        .join('');
+    return `<div class="error">Compilation failed:</div><ul>${items}</ul>`;
+}
+
+function renderError(result: ExecuteResult): string {
+    const err = result.error;
+    if (!err) {
+        return `<div class="error">Unknown error.</div>`;
+    }
+    const inner = err.inner
+        ? `<div class="type">Inner: ${escape(err.inner.type)}: ${escape(err.inner.message)}</div>`
+        : '';
+    return `<div class="error"><strong>${escape(err.type)}</strong>: ${escape(err.message)}</div>${inner}
+<pre class="error">${escape(err.stack ?? '')}</pre>`;
+}
+
+function escape(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}

@@ -1,0 +1,12 @@
+# .NET
+[Bb]in/
+[Oo]bj/
+
+# Node / VS Code extension
+node_modules/
+out/
+*.vsix
+
+# Editor
+.vs/
+*.user
