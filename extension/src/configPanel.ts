@@ -298,7 +298,7 @@ window.addEventListener('message', e => {
         if (last) selected = last;
         render();
     } else if (m.type === 'saved') {
-        document.getElementById('status').textContent = m.path ? 'Saved to ' + m.path : 'No workspace folder to save into.';
+        document.getElementById('status').textContent = 'Saved to VS Code User Settings.';
         render();
     }
 });
