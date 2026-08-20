@@ -11,11 +11,12 @@ let output: vscode.OutputChannel;
 let profiles: ProfileManager;
 let statusBar: vscode.StatusBarItem;
 
-export function activate(context: vscode.ExtensionContext): void {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
     output = vscode.window.createOutputChannel('LINQ Runner');
     context.subscriptions.push(output);
 
-    profiles = new ProfileManager(context.workspaceState);
+    profiles = new ProfileManager(context.globalState, context.secrets);
+    await profiles.migrateLegacyConfiguration();
 
     statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusBar.command = 'linqRunner.selectProfile';
@@ -48,7 +49,7 @@ async function selectProfile(): Promise<void> {
     const names = profiles.listProfiles();
     if (names.length === 0) {
         vscode.window.showInformationMessage(
-            'LINQ Runner: no profiles found. Add profiles to a workspace linqrunner.json, or run "LINQ: Open Global Profiles" to define them for all VS Code instances.',
+            'LINQ Runner: no profiles found. Run "LINQ: Configure Profiles" to define profiles for all VS Code instances.',
         );
         return;
     }
@@ -115,7 +116,7 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
     const rowLimit = vscode.workspace.getConfiguration('linqRunner').get<number>('rowLimit', 1000);
     const title = path.basename(editor.document.fileName);
 
-    const profile = profiles.resolveActive();
+    const profile = await profiles.resolveActive();
     if (profile?.missing.length) {
         output.appendLine(
             `Profile "${profile.name}": ${profile.missing.length} configured assembly path(s) not found:\n  ${profile.missing.join('\n  ')}`,
@@ -162,27 +163,7 @@ async function restartRunner(): Promise<void> {
     vscode.window.showInformationMessage('LINQ Runner: runner restarted.');
 }
 
-// Opens (creating if needed) the global profiles file shared across all VS Code instances.
 async function openGlobalProfiles(): Promise<void> {
-    const target = profiles.globalConfigPath();
-    if (!fs.existsSync(target)) {
-        fs.mkdirSync(path.dirname(target), { recursive: true });
-        const template = {
-            defaultProfile: 'app',
-            profiles: {
-                app: {
-                    assemblies: ['C:/path/to/YourApp/bin/Debug/net9.0/YourApp.Data.dll'],
-                    imports: ['YourApp.Data'],
-                    context: 'YourApp.Data.AppDbContext',
-                    provider: 'sqlserver',
-                    connectionString: 'Server=localhost;Database=YourDb;User Id=sa;Password=...;Encrypt=True;TrustServerCertificate=True',
-                },
-            },
-        };
-        fs.writeFileSync(target, JSON.stringify(template, null, 2) + '\n', 'utf8');
-    }
-    const doc = await vscode.workspace.openTextDocument(target);
-    await vscode.window.showTextDocument(doc);
-    updateStatusBar();
+    await vscode.commands.executeCommand('workbench.action.openSettings', '@ext:poc.linq-runner-poc');
 }
 

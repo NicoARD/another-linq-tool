@@ -58,7 +58,7 @@
       },
       {
         "command": "linqRunner.openGlobalProfiles",
-        "title": "LINQ: Open Global Profiles"
+        "title": "LINQ: Open LINQ Runner Settings"
       }
     ],
     "menus": {
@@ -81,17 +81,35 @@
         "linqRunner.dotnetPath": {
           "type": "string",
           "default": "dotnet",
+          "scope": "machine",
           "description": "Path to the dotnet executable used to launch the runner."
         },
         "linqRunner.runnerPath": {
           "type": "string",
           "default": "",
+          "scope": "machine",
           "description": "Absolute path to LinqRunner.dll. When empty, the bundled ../runner build is used."
         },
         "linqRunner.rowLimit": {
           "type": "number",
           "default": 1000,
+          "scope": "machine",
           "description": "Maximum number of rows materialized from a sequence result."
+        },
+        "linqRunner.profiles": {
+          "type": "object",
+          "default": {},
+          "scope": "machine",
+          "description": "Named LINQ Runner execution profiles shared by all VS Code windows. Connection strings are stored separately in Secret Storage.",
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "linqRunner.defaultProfile": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Name of the default LINQ Runner execution profile shared by all VS Code windows."
         }
       }
     }

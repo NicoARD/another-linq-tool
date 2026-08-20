@@ -4,6 +4,10 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 const CONFIG_FILENAME = 'linqrunner.json';
+const PROFILES_SETTING = 'profiles';
+const DEFAULT_PROFILE_SETTING = 'defaultProfile';
+const ACTIVE_PROFILE_KEY = 'activeProfile';
+const CONNECTION_SECRET_PREFIX = 'profileConnectionString:';
 
 export type AssemblyEntry = string | { path: string; enabled?: boolean };
 
@@ -31,10 +35,10 @@ export function normalizeAssembly(entry: AssemblyEntry): { path: string; enabled
 
 export interface ResolvedProfile {
     name: string;
-    assemblies: string[]; // absolute paths that exist
+    assemblies: string[];
     imports: string[];
     packages: string[];
-    missing: string[]; // configured paths that do not exist
+    missing: string[];
     context?: string;
     provider?: string;
     connectionString?: string;
@@ -42,48 +46,80 @@ export interface ResolvedProfile {
     contextFactoryMethod?: string;
 }
 
-/**
- * Loads execution profiles from a `linqrunner.json` file at a workspace-folder root and tracks the
- * active profile. A profile lists the application DLLs to load and default namespaces to import.
- */
+/** Manages user-configurable profiles in global User Settings and connection strings in Secret Storage. */
 export class ProfileManager {
-    constructor(private readonly memento: vscode.Memento) {}
+    constructor(
+        private readonly globalState: vscode.Memento,
+        private readonly secrets: vscode.SecretStorage,
+    ) {}
+
+    async migrateLegacyConfiguration(): Promise<void> {
+        const settings = this.settings();
+        for (const key of ['dotnetPath', 'runnerPath', 'rowLimit']) {
+            const existing = settings.inspect<unknown>(key);
+            if (existing?.globalValue === undefined && existing?.workspaceValue !== undefined) {
+                await settings.update(key, existing.workspaceValue, vscode.ConfigurationTarget.Global);
+            }
+        }
+        if (settings.inspect<Record<string, ProfileEntry>>(PROFILES_SETTING)?.globalValue !== undefined) {
+            return;
+        }
+
+        // Preserve the old precedence: the workspace file overrode the old global file.
+        const migrated: ProfilesConfigFile = { profiles: {} };
+        const connectionStrings = new Map<string, string>();
+        for (const file of [this.legacyGlobalConfigPath(), this.findLegacyWorkspaceConfig()]) {
+            const loaded = file && this.loadLegacyFile(file);
+            if (!loaded) {
+                continue;
+            }
+            for (const [name, profile] of Object.entries(loaded.config.profiles ?? {})) {
+                migrated.profiles![name] = this.absolutizeAssemblies(profile, loaded.dir);
+                if (profile.connectionString) {
+                    connectionStrings.set(name, profile.connectionString);
+                }
+            }
+            if (loaded.config.defaultProfile) {
+                migrated.defaultProfile = loaded.config.defaultProfile;
+            }
+        }
+
+        if (Object.keys(migrated.profiles!).length > 0) {
+            await this.saveConfig(migrated);
+            for (const [name, connectionString] of connectionStrings) {
+                await this.secrets.store(this.connectionSecretKey(name), connectionString);
+            }
+        }
+    }
 
     listProfiles(): string[] {
-        return [...this.readMerged().profiles.keys()];
+        return Object.keys(this.readSettings().profiles ?? {});
     }
 
     getActiveName(): string | undefined {
-        const merged = this.readMerged();
-        const names = [...merged.profiles.keys()];
+        const config = this.readSettings();
+        const names = Object.keys(config.profiles ?? {});
         if (names.length === 0) {
             return undefined;
         }
-        const stored = this.memento.get<string>('activeProfile');
+        const stored = this.globalState.get<string>(ACTIVE_PROFILE_KEY);
         if (stored && names.includes(stored)) {
             return stored;
         }
-        if (merged.defaultProfile && names.includes(merged.defaultProfile)) {
-            return merged.defaultProfile;
-        }
-        return names[0];
+        return config.defaultProfile && names.includes(config.defaultProfile) ? config.defaultProfile : names[0];
     }
 
     async setActive(name: string): Promise<void> {
-        await this.memento.update('activeProfile', name);
+        await this.globalState.update(ACTIVE_PROFILE_KEY, name);
     }
 
-    resolveActive(): ResolvedProfile | undefined {
-        const merged = this.readMerged();
+    async resolveActive(): Promise<ResolvedProfile | undefined> {
+        const config = this.readSettings();
         const name = this.getActiveName();
-        if (!name) {
+        const raw = name && config.profiles?.[name];
+        if (!name || !raw) {
             return undefined;
         }
-        const found = merged.profiles.get(name);
-        if (!found) {
-            return undefined;
-        }
-        const raw = found.entry;
 
         const assemblies: string[] = [];
         const missing: string[] = [];
@@ -92,17 +128,12 @@ export class ProfileManager {
             if (!normalized.enabled) {
                 continue;
             }
-            // Relative paths resolve against the file that DEFINED the profile (global or workspace).
-            const abs = path.isAbsolute(normalized.path) ? normalized.path : path.resolve(found.dir, normalized.path);
-            if (fs.existsSync(abs)) {
-                assemblies.push(abs);
-            } else {
-                missing.push(abs);
-            }
+            // Global settings should use absolute paths. Preserve relative paths only for manually edited settings.
+            const assemblyPath = path.isAbsolute(normalized.path) ? normalized.path : path.resolve(normalized.path);
+            (fs.existsSync(assemblyPath) ? assemblies : missing).push(assemblyPath);
         }
 
         const dbEnabled = raw.dbEnabled !== false;
-
         return {
             name,
             assemblies,
@@ -111,56 +142,71 @@ export class ProfileManager {
             missing,
             context: dbEnabled ? raw.context : undefined,
             provider: dbEnabled ? raw.provider : undefined,
-            connectionString: dbEnabled ? raw.connectionString : undefined,
+            connectionString: dbEnabled ? await this.secrets.get(this.connectionSecretKey(name)) : undefined,
             contextFactoryType: dbEnabled ? raw.contextFactory?.type : undefined,
             contextFactoryMethod: dbEnabled ? raw.contextFactory?.method : undefined,
         };
     }
 
-    /** Reads the config for editing, returning an empty config + intended path if none exists yet. */
-    readConfigForEdit(): { config: ProfilesConfigFile; path: string | undefined } {
-        const configPath = this.findConfig() ?? this.defaultConfigPath();
-        let config: ProfilesConfigFile = { profiles: {} };
-        if (configPath && fs.existsSync(configPath)) {
-            try {
-                config = JSON.parse(fs.readFileSync(configPath, 'utf8')) as ProfilesConfigFile;
-            } catch {
-                // fall back to empty config; the editor will overwrite on save.
+    async readConfigForEdit(): Promise<ProfilesConfigFile> {
+        const config = this.readSettings();
+        const profiles: Record<string, ProfileEntry> = {};
+        for (const [name, profile] of Object.entries(config.profiles ?? {})) {
+            profiles[name] = { ...profile, connectionString: await this.secrets.get(this.connectionSecretKey(name)) };
+        }
+        return { defaultProfile: config.defaultProfile, profiles };
+    }
+
+    async saveConfig(config: ProfilesConfigFile): Promise<void> {
+        const oldProfiles = this.readSettings().profiles ?? {};
+        const profiles: Record<string, ProfileEntry> = {};
+        for (const [name, profile] of Object.entries(config.profiles ?? {})) {
+            const { connectionString, ...settingProfile } = profile;
+            profiles[name] = settingProfile;
+            const key = this.connectionSecretKey(name);
+            if (connectionString) {
+                await this.secrets.store(key, connectionString);
+            } else {
+                await this.secrets.delete(key);
             }
         }
-        return { config, path: configPath };
-    }
-
-    /** Writes the config back to linqrunner.json (creating it at the workspace root if needed). */
-    saveConfig(config: ProfilesConfigFile): string | undefined {
-        const target = this.findConfig() ?? this.defaultConfigPath();
-        if (!target) {
-            return undefined;
+        for (const oldName of Object.keys(oldProfiles)) {
+            if (!(oldName in profiles)) {
+                await this.secrets.delete(this.connectionSecretKey(oldName));
+            }
         }
-        fs.writeFileSync(target, JSON.stringify(config, null, 2) + '\n', 'utf8');
-        return target;
+        await this.settings().update(PROFILES_SETTING, profiles, vscode.ConfigurationTarget.Global);
+        await this.settings().update(DEFAULT_PROFILE_SETTING, config.defaultProfile ?? '', vscode.ConfigurationTarget.Global);
     }
 
-    private defaultConfigPath(): string | undefined {
-        const folder = vscode.workspace.workspaceFolders?.[0];
-        return folder ? path.join(folder.uri.fsPath, CONFIG_FILENAME) : undefined;
+    private settings(): vscode.WorkspaceConfiguration {
+        return vscode.workspace.getConfiguration('linqRunner');
     }
 
-
-    private read(): { config: ProfilesConfigFile; dir: string } | undefined {
-        const configPath = this.findConfig();
-        if (!configPath) {
-            return undefined;
-        }
-        try {
-            const config = JSON.parse(fs.readFileSync(configPath, 'utf8')) as ProfilesConfigFile;
-            return { config, dir: path.dirname(configPath) };
-        } catch {
-            return undefined;
-        }
+    private readSettings(): ProfilesConfigFile {
+        return {
+            profiles: this.settings().get<Record<string, ProfileEntry>>(PROFILES_SETTING, {}),
+            defaultProfile: this.settings().get<string>(DEFAULT_PROFILE_SETTING, '') || undefined,
+        };
     }
 
-    private findConfig(): string | undefined {
+    private connectionSecretKey(profileName: string): string {
+        return CONNECTION_SECRET_PREFIX + profileName;
+    }
+
+    private absolutizeAssemblies(profile: ProfileEntry, baseDir: string): ProfileEntry {
+        return {
+            ...profile,
+            connectionString: undefined,
+            assemblies: profile.assemblies?.map((entry) => {
+                const normalized = normalizeAssembly(entry);
+                const assemblyPath = path.isAbsolute(normalized.path) ? normalized.path : path.resolve(baseDir, normalized.path);
+                return typeof entry === 'string' ? assemblyPath : { ...entry, path: assemblyPath };
+            }),
+        };
+    }
+
+    private findLegacyWorkspaceConfig(): string | undefined {
         for (const folder of vscode.workspace.workspaceFolders ?? []) {
             const candidate = path.join(folder.uri.fsPath, CONFIG_FILENAME);
             if (fs.existsSync(candidate)) {
@@ -170,37 +216,11 @@ export class ProfileManager {
         return undefined;
     }
 
-    /** The global profiles file, shared across every VS Code instance and the CLI. */
-    globalConfigPath(): string {
+    private legacyGlobalConfigPath(): string {
         return path.join(os.homedir(), '.linqrunner', CONFIG_FILENAME);
     }
 
-    // Merges global profiles (base) with the workspace file (overrides by name). Each profile remembers
-    // the directory of the file that defined it, so relative assembly paths resolve correctly.
-    private readMerged(): { profiles: Map<string, { entry: ProfileEntry; dir: string }>; defaultProfile?: string } {
-        const profiles = new Map<string, { entry: ProfileEntry; dir: string }>();
-        let defaultProfile: string | undefined;
-
-        for (const file of [this.globalConfigPath(), this.findConfig()]) {
-            if (!file) {
-                continue;
-            }
-            const loaded = this.loadFile(file);
-            if (!loaded) {
-                continue;
-            }
-            for (const [profileName, entry] of Object.entries(loaded.config.profiles ?? {})) {
-                profiles.set(profileName, { entry, dir: loaded.dir });
-            }
-            if (loaded.config.defaultProfile) {
-                defaultProfile = loaded.config.defaultProfile;
-            }
-        }
-
-        return { profiles, defaultProfile };
-    }
-
-    private loadFile(filePath: string): { config: ProfilesConfigFile; dir: string } | undefined {
+    private loadLegacyFile(filePath: string): { config: ProfilesConfigFile; dir: string } | undefined {
         if (!fs.existsSync(filePath)) {
             return undefined;
         }

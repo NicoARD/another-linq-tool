@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { ProfileManager, ProfilesConfigFile } from './profiles';
 
-/** A webview form for editing linqrunner.json profiles (assemblies, imports, database/context). */
+/** A webview form for editing global User Settings profiles (assemblies, imports, database/context). */
 export class ConfigPanel {
     private static panel: vscode.WebviewPanel | undefined;
 
@@ -21,15 +21,15 @@ export class ConfigPanel {
         this.panel = panel;
         panel.onDidDispose(() => (this.panel = undefined));
 
-        const post = () => {
-            const { config } = profiles.readConfigForEdit();
+        const post = async () => {
+            const config = await profiles.readConfigForEdit();
             panel.webview.postMessage({ type: 'init', config });
         };
 
         panel.webview.onDidReceiveMessage(async (message) => {
             switch (message.type) {
                 case 'ready':
-                    post();
+                    await post();
                     break;
                 case 'pickAssembly': {
                     const picked = await vscode.window.showOpenDialog({
@@ -38,7 +38,7 @@ export class ConfigPanel {
                         openLabel: 'Add assembly',
                     });
                     if (picked && picked[0]) {
-                        panel.webview.postMessage({ type: 'assemblyPicked', path: toStorablePath(profiles, picked[0].fsPath) });
+                        panel.webview.postMessage({ type: 'assemblyPicked', path: toStorablePath(picked[0].fsPath) });
                     }
                     break;
                 }
@@ -73,9 +73,9 @@ export class ConfigPanel {
                     break;
                 }
                 case 'save': {
-                    const saved = profiles.saveConfig(message.config as ProfilesConfigFile);
+                    await profiles.saveConfig(message.config as ProfilesConfigFile);
                     onSaved();
-                    panel.webview.postMessage({ type: 'saved', path: saved });
+                    panel.webview.postMessage({ type: 'saved' });
                     break;
                 }
             }
@@ -85,7 +85,7 @@ export class ConfigPanel {
     }
 }
 
-function toStorablePath(profiles: ProfileManager, picked: string): string {
+function toStorablePath(picked: string): string {
     // Keep it absolute with forward slashes; the resolver handles both. Users can relativize by hand.
     return picked.replace(/\\/g, '/');
 }
@@ -144,7 +144,7 @@ function html(webview: vscode.Webview): string {
     <button id="save">Save</button>
     <span class="status" id="status"></span>
 </div>
-<div class="warn">Note: connection strings (incl. passwords) are stored in plain text in linqrunner.json — do not commit secrets.</div>
+<div class="muted">Connection strings are stored in VS Code Secret Storage, not User Settings.</div>
 
 <script nonce="${nonce}">
 const vscode = acquireVsCodeApi();
