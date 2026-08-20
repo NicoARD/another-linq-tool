@@ -14,7 +14,7 @@ export class ConfigPanel {
 
         const panel = vscode.window.createWebviewPanel(
             'linqRunnerConfig',
-            'LINQ Runner Configuration',
+            'Another LINQ Tool Configuration',
             vscode.ViewColumn.Active,
             { enableScripts: true, retainContextWhenHidden: true },
         );
@@ -51,7 +51,7 @@ export class ConfigPanel {
                     if (uri) {
                         const content = JSON.stringify({ profiles: { [message.name]: message.profile } }, null, 2) + '\n';
                         fs.writeFileSync(uri.fsPath, content, 'utf8');
-                        vscode.window.showInformationMessage('LINQ Runner: exported profile to ' + uri.fsPath);
+                        vscode.window.showInformationMessage('Another LINQ Tool: exported profile to ' + uri.fsPath);
                     }
                     break;
                 }
@@ -67,7 +67,7 @@ export class ConfigPanel {
                             const imported = parsed && parsed.profiles ? parsed.profiles : parsed;
                             panel.webview.postMessage({ type: 'profilesImported', profiles: imported });
                         } catch (err) {
-                            vscode.window.showErrorMessage('LINQ Runner: import failed — ' + String(err));
+                            vscode.window.showErrorMessage('Another LINQ Tool: import failed — ' + String(err));
                         }
                     }
                     break;
@@ -125,7 +125,7 @@ function html(webview: vscode.Webview): string {
 </style>
 </head>
 <body>
-<h2>LINQ Runner Configuration</h2>
+<h2>Another LINQ Tool Configuration</h2>
 
 <div class="row">
     <label style="margin:0">Profile</label>

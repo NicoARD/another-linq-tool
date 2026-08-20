@@ -1,7 +1,8 @@
 {
   "name": "linq-runner-poc",
-  "displayName": "LINQ Runner (POC)",
-  "description": "Run C# scripts as interactive query windows (proof of concept, no database yet).",
+  "displayName": "Another LINQ Tool",
+  "description": "Run C# scripts as interactive LINQ query windows.",
+  "icon": "./icon.png",
   "version": "0.0.1",
   "publisher": "poc",
   "private": true,
@@ -40,25 +41,25 @@
     "commands": [
       {
         "command": "linqRunner.runCurrentFile",
-        "title": "LINQ: Run Current File",
+        "title": "Another LINQ Tool: Run Current File",
         "icon": "$(play)"
       },
       {
         "command": "linqRunner.restartRunner",
-        "title": "LINQ: Restart Runner"
+        "title": "Another LINQ Tool: Restart Runner"
       },
       {
         "command": "linqRunner.selectProfile",
-        "title": "LINQ: Select Profile"
+        "title": "Another LINQ Tool: Select Profile"
       },
       {
         "command": "linqRunner.configure",
-        "title": "LINQ: Configure Profiles",
+        "title": "Another LINQ Tool: Configure Profiles",
         "icon": "$(gear)"
       },
       {
         "command": "linqRunner.openGlobalProfiles",
-        "title": "LINQ: Open LINQ Runner Settings"
+        "title": "Another LINQ Tool: Open Settings"
       }
     ],
     "menus": {
@@ -76,7 +77,7 @@
       ]
     },
     "configuration": {
-      "title": "LINQ Runner",
+      "title": "Another LINQ Tool",
       "properties": {
         "linqRunner.dotnetPath": {
           "type": "string",
@@ -100,7 +101,7 @@
           "type": "object",
           "default": {},
           "scope": "machine",
-          "description": "Named LINQ Runner execution profiles shared by all VS Code windows. Connection strings are stored separately in Secret Storage.",
+          "description": "Named Another LINQ Tool execution profiles shared by all VS Code windows. Connection strings are stored separately in Secret Storage.",
           "additionalProperties": {
             "type": "object"
           }
@@ -109,7 +110,7 @@
           "type": "string",
           "default": "",
           "scope": "machine",
-          "description": "Name of the default LINQ Runner execution profile shared by all VS Code windows."
+          "description": "Name of the default Another LINQ Tool execution profile shared by all VS Code windows."
         }
       }
     }

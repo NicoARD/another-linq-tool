@@ -9,14 +9,14 @@ export class ResultPanel {
         if (!this.panel) {
             this.panel = vscode.window.createWebviewPanel(
                 'linqRunnerResult',
-                'LINQ Result',
+                'Another LINQ Tool Result',
                 { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
                 { enableScripts: false, retainContextWhenHidden: true },
             );
             this.panel.onDidDispose(() => (this.panel = undefined));
         }
 
-        this.panel.title = `LINQ Result — ${title}`;
+        this.panel.title = `Another LINQ Tool Result — ${title}`;
         this.panel.webview.html = renderHtml(result);
         this.panel.reveal(vscode.ViewColumn.Beside, true);
     }

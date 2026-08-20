@@ -12,7 +12,7 @@ let profiles: ProfileManager;
 let statusBar: vscode.StatusBarItem;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    output = vscode.window.createOutputChannel('LINQ Runner');
+    output = vscode.window.createOutputChannel('Another LINQ Tool');
     context.subscriptions.push(output);
 
     profiles = new ProfileManager(context.globalState, context.secrets);
@@ -40,8 +40,8 @@ export function deactivate(): void {
 
 function updateStatusBar(): void {
     const active = profiles.getActiveName();
-    statusBar.text = active ? `$(database) LINQ: ${active}` : '$(database) LINQ: no profile';
-    statusBar.tooltip = 'Select the active LINQ Runner profile';
+    statusBar.text = active ? `$(database) Another LINQ Tool: ${active}` : '$(database) Another LINQ Tool: no profile';
+    statusBar.tooltip = 'Select the active Another LINQ Tool profile';
     statusBar.show();
 }
 
@@ -49,7 +49,7 @@ async function selectProfile(): Promise<void> {
     const names = profiles.listProfiles();
     if (names.length === 0) {
         vscode.window.showInformationMessage(
-            'LINQ Runner: no profiles found. Run "LINQ: Configure Profiles" to define profiles for all VS Code instances.',
+            'Another LINQ Tool: no profiles found. Run "LINQ: Configure Profiles" to define profiles for all VS Code instances.',
         );
         return;
     }
@@ -57,7 +57,7 @@ async function selectProfile(): Promise<void> {
     const active = profiles.getActiveName();
     const picked = await vscode.window.showQuickPick(
         names.map((name) => ({ label: name, description: name === active ? '(active)' : undefined })),
-        { placeHolder: 'Select the active LINQ Runner profile' },
+        { placeHolder: 'Select the active Another LINQ Tool profile' },
     );
     if (picked) {
         await profiles.setActive(picked.label);
@@ -100,14 +100,14 @@ function resolveRunnerPath(context: vscode.ExtensionContext, configured: string)
 async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-        vscode.window.showWarningMessage('LINQ Runner: no active editor.');
+        vscode.window.showWarningMessage('Another LINQ Tool: no active editor.');
         return;
     }
 
     const runnerPath = resolveRunnerPath(context, vscode.workspace.getConfiguration('linqRunner').get<string>('runnerPath', ''));
     if (!fs.existsSync(runnerPath)) {
         vscode.window.showErrorMessage(
-            `LINQ Runner: runner not found at ${runnerPath}. Build it with "dotnet build" in runner/LinqRunner.`,
+            `Another LINQ Tool: runner not found at ${runnerPath}. Build it with "dotnet build" in runner/LinqRunner.`,
         );
         return;
     }
@@ -122,7 +122,7 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
             `Profile "${profile.name}": ${profile.missing.length} configured assembly path(s) not found:\n  ${profile.missing.join('\n  ')}`,
         );
         vscode.window.showWarningMessage(
-            `LINQ Runner: profile "${profile.name}" has ${profile.missing.length} missing assembly path(s). Build the referenced project(s). See the LINQ Runner output for details.`,
+            `Another LINQ Tool: profile "${profile.name}" has ${profile.missing.length} missing assembly path(s). Build the referenced project(s). See the Another LINQ Tool output for details.`,
         );
     }
 
@@ -148,7 +148,7 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
             } catch (err) {
                 const message = err instanceof Error ? err.message : String(err);
                 output.appendLine(`Execution failed: ${message}`);
-                vscode.window.showErrorMessage(`LINQ Runner: execution failed. ${message}`);
+                vscode.window.showErrorMessage(`Another LINQ Tool: execution failed. ${message}`);
             }
         },
     );
@@ -160,7 +160,7 @@ async function restartRunner(): Promise<void> {
     }
     output.appendLine('Restarting runner…');
     await client.restart();
-    vscode.window.showInformationMessage('LINQ Runner: runner restarted.');
+    vscode.window.showInformationMessage('Another LINQ Tool: runner restarted.');
 }
 
 async function openGlobalProfiles(): Promise<void> {
