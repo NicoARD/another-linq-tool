@@ -1,0 +1,13 @@
+{
+  "defaultProfile": "testmodel",
+  "profiles": {
+    "testmodel": {
+      "assemblies": [
+        "./fixtures/TestModel/bin/Debug/net9.0/TestModel.dll"
+      ],
+      "imports": [
+        "TestModel"
+      ]
+    }
+  }
+}

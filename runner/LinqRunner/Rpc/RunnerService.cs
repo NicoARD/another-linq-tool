@@ -44,7 +44,12 @@ public sealed class RunnerService
 
     [JsonRpcMethod("execute", UseSingleObjectParameterDeserialization = true)]
     public Task<ExecuteResult> Execute(ExecuteParams parameters, CancellationToken cancellationToken) =>
-        ScriptExecutor.ExecuteAsync(parameters.Source ?? string.Empty, parameters.RowLimit ?? 1000, cancellationToken);
+        ScriptExecutor.ExecuteAsync(
+            parameters.Source ?? string.Empty,
+            parameters.RowLimit ?? 1000,
+            parameters.Assemblies ?? [],
+            parameters.Imports ?? [],
+            cancellationToken);
 
     [JsonRpcMethod("shutdown")]
     public void Shutdown() => _ = Task.Run(async () =>
@@ -69,4 +74,6 @@ public sealed class ExecuteParams
 {
     public string? Source { get; set; }
     public int? RowLimit { get; set; }
+    public string[]? Assemblies { get; set; }
+    public string[]? Imports { get; set; }
 }

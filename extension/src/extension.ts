@@ -3,17 +3,28 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { RunnerClient } from './runnerClient';
 import { ResultPanel } from './resultPanel';
+import { ProfileManager } from './profiles';
 
 let client: RunnerClient | undefined;
 let output: vscode.OutputChannel;
+let profiles: ProfileManager;
+let statusBar: vscode.StatusBarItem;
 
 export function activate(context: vscode.ExtensionContext): void {
     output = vscode.window.createOutputChannel('LINQ Runner');
     context.subscriptions.push(output);
 
+    profiles = new ProfileManager(context.workspaceState);
+
+    statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    statusBar.command = 'linqRunner.selectProfile';
+    context.subscriptions.push(statusBar);
+    updateStatusBar();
+
     context.subscriptions.push(
         vscode.commands.registerCommand('linqRunner.runCurrentFile', () => runCurrentFile(context)),
         vscode.commands.registerCommand('linqRunner.restartRunner', () => restartRunner()),
+        vscode.commands.registerCommand('linqRunner.selectProfile', () => selectProfile()),
     );
 }
 
@@ -21,6 +32,34 @@ export function deactivate(): void {
     client?.dispose();
     client = undefined;
 }
+
+function updateStatusBar(): void {
+    const active = profiles.getActiveName();
+    statusBar.text = active ? `$(database) LINQ: ${active}` : '$(database) LINQ: no profile';
+    statusBar.tooltip = 'Select the active LINQ Runner profile';
+    statusBar.show();
+}
+
+async function selectProfile(): Promise<void> {
+    const names = profiles.listProfiles();
+    if (names.length === 0) {
+        vscode.window.showInformationMessage(
+            'LINQ Runner: no profiles found. Add a linqrunner.json with a "profiles" section at the workspace root.',
+        );
+        return;
+    }
+
+    const active = profiles.getActiveName();
+    const picked = await vscode.window.showQuickPick(
+        names.map((name) => ({ label: name, description: name === active ? '(active)' : undefined })),
+        { placeHolder: 'Select the active LINQ Runner profile' },
+    );
+    if (picked) {
+        await profiles.setActive(picked.label);
+        updateStatusBar();
+    }
+}
+
 
 function getClient(context: vscode.ExtensionContext): RunnerClient {
     if (client) {
@@ -71,11 +110,26 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
     const rowLimit = vscode.workspace.getConfiguration('linqRunner').get<number>('rowLimit', 1000);
     const title = path.basename(editor.document.fileName);
 
+    const profile = profiles.resolveActive();
+    if (profile?.missing.length) {
+        output.appendLine(
+            `Profile "${profile.name}": ${profile.missing.length} configured assembly path(s) not found:\n  ${profile.missing.join('\n  ')}`,
+        );
+        vscode.window.showWarningMessage(
+            `LINQ Runner: profile "${profile.name}" has ${profile.missing.length} missing assembly path(s). Build the referenced project(s). See the LINQ Runner output for details.`,
+        );
+    }
+
     await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: 'Running LINQ script…', cancellable: false },
+        { location: vscode.ProgressLocation.Notification, title: 'Running script…', cancellable: false },
         async () => {
             try {
-                const result = await getClient(context).execute(source, rowLimit);
+                const result = await getClient(context).execute(
+                    source,
+                    rowLimit,
+                    profile?.assemblies ?? [],
+                    profile?.imports ?? [],
+                );
                 ResultPanel.show(result, title);
             } catch (err) {
                 const message = err instanceof Error ? err.message : String(err);

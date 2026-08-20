@@ -1,8 +1,10 @@
 using System.Diagnostics;
+using LinqRunner.Loading;
 using LinqRunner.Results;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.CodeAnalysis.Scripting.Hosting;
 
 namespace LinqRunner.Scripting;
 
@@ -28,19 +30,45 @@ public static class ScriptExecutor
         "LinqRunner.Api",
     ];
 
-    public static async Task<ExecuteResult> ExecuteAsync(string source, int rowLimit, CancellationToken cancellationToken)
+    public static async Task<ExecuteResult> ExecuteAsync(
+        string source,
+        int rowLimit,
+        IReadOnlyList<string> assemblies,
+        IReadOnlyList<string> imports,
+        CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
+
+        // Register the loaded user assemblies with Roslyn so both compilation (metadata references)
+        // and execution (the registered instances) see the same types.
+        var assemblyLoader = new InteractiveAssemblyLoader();
+        assemblyLoader.RegisterDependency(typeof(Api.DumpExtensions).Assembly);
+
+        UserAssemblyLoader.Result loaded;
+        try
+        {
+            loaded = UserAssemblyLoader.Load(assemblies);
+        }
+        catch (Exception ex)
+        {
+            return InfrastructureError($"Failed to load configured assemblies: {ex.Message}", ex, stopwatch);
+        }
+
+        foreach (var assembly in loaded.Assemblies)
+        {
+            assemblyLoader.RegisterDependency(assembly);
+        }
 
         var options = ScriptOptions.Default
             .WithReferences(FrameworkReferences.Value)
             .AddReferences(typeof(Api.DumpExtensions).Assembly)
-            .WithImports(DefaultImports);
+            .AddReferences(loaded.References)
+            .WithImports(DefaultImports.Concat(imports));
 
         Script<object> script;
         try
         {
-            script = CSharpScript.Create<object>(source, options);
+            script = CSharpScript.Create<object>(source, options, globalsType: null, assemblyLoader: assemblyLoader);
         }
         catch (Exception ex)
         {
@@ -135,6 +163,18 @@ public static class ScriptExecutor
         Status = "runtimeError",
         Error = ToError(ex),
         Diagnostics = diagnostics is null ? null : Map(diagnostics, warningsOnly: true),
+        ElapsedMs = stopwatch.ElapsedMilliseconds,
+    };
+
+    private static ExecuteResult InfrastructureError(string message, Exception ex, Stopwatch stopwatch) => new()
+    {
+        Status = "infrastructureError",
+        Error = new ErrorInfo
+        {
+            Type = ex.GetType().FullName ?? ex.GetType().Name,
+            Message = message,
+            Stack = ex.StackTrace,
+        },
         ElapsedMs = stopwatch.ElapsedMilliseconds,
     };
 

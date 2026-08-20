@@ -40,10 +40,28 @@ static class Cli
             rowLimit = parsed;
         }
 
+        var assemblies = CollectOption(args, "--assembly");
+        var imports = CollectOption(args, "--import");
+
         var source = await File.ReadAllTextAsync(file);
-        var result = await ScriptExecutor.ExecuteAsync(source, rowLimit, CancellationToken.None);
+        var result = await ScriptExecutor.ExecuteAsync(source, rowLimit, assemblies, imports, CancellationToken.None);
 
         Console.WriteLine(JsonConvert.SerializeObject(result, JsonSettings));
         return result.Status == "success" ? 0 : 1;
+    }
+
+    // Collects all values of a repeatable option, e.g. `--assembly a.dll --assembly b.dll`.
+    static List<string> CollectOption(string[] args, string option)
+    {
+        var values = new List<string>();
+        for (var i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i].Equals(option, StringComparison.Ordinal))
+            {
+                values.Add(args[i + 1]);
+            }
+        }
+
+        return values;
     }
 }

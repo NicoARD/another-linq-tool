@@ -39,7 +39,7 @@ export interface ErrorInfo {
 }
 
 export interface ExecuteResult {
-    status: 'success' | 'compileError' | 'runtimeError' | 'cancelled';
+    status: 'success' | 'compileError' | 'runtimeError' | 'infrastructureError' | 'cancelled';
     value?: ResultNode;
     dumps?: DumpNode[];
     diagnostics?: DiagnosticInfo[];
@@ -69,9 +69,9 @@ export class RunnerClient {
         private readonly log: (message: string) => void,
     ) {}
 
-    async execute(source: string, rowLimit: number): Promise<ExecuteResult> {
+    async execute(source: string, rowLimit: number, assemblies: string[], imports: string[]): Promise<ExecuteResult> {
         await this.ensureStarted();
-        return this.connection!.sendRequest<ExecuteResult>('execute', { source, rowLimit });
+        return this.connection!.sendRequest<ExecuteResult>('execute', { source, rowLimit, assemblies, imports });
     }
 
     async restart(): Promise<void> {

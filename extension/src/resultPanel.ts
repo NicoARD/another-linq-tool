@@ -65,7 +65,7 @@ function renderBody(result: ExecuteResult): string {
     if (result.status === 'compileError') {
         return consoleBlock + dumps + renderDiagnostics(result);
     }
-    if (result.status === 'runtimeError') {
+    if (result.status === 'runtimeError' || result.status === 'infrastructureError') {
         return consoleBlock + dumps + renderError(result);
     }
     if (result.status === 'cancelled') {

@@ -46,6 +46,10 @@
       {
         "command": "linqRunner.restartRunner",
         "title": "LINQ: Restart Runner"
+      },
+      {
+        "command": "linqRunner.selectProfile",
+        "title": "LINQ: Select Profile"
       }
     ],
     "menus": {
