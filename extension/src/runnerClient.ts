@@ -83,6 +83,7 @@ export class RunnerClient {
         rowLimit: number,
         assemblies: string[],
         imports: string[],
+        packages: string[],
         db: DbOptions,
     ): Promise<ExecuteResult> {
         await this.ensureStarted();
@@ -91,6 +92,7 @@ export class RunnerClient {
             rowLimit,
             assemblies,
             imports,
+            packages,
             ...db,
         });
     }

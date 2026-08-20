@@ -49,6 +49,7 @@ public sealed class RunnerService
             parameters.RowLimit ?? 1000,
             parameters.Assemblies ?? [],
             parameters.Imports ?? [],
+            parameters.Packages ?? [],
             new Data.DbContextRequest
             {
                 Context = parameters.Context,
@@ -84,6 +85,7 @@ public sealed class ExecuteParams
     public int? RowLimit { get; set; }
     public string[]? Assemblies { get; set; }
     public string[]? Imports { get; set; }
+    public string[]? Packages { get; set; }
     public string? Context { get; set; }
     public string? Provider { get; set; }
     public string? ConnectionString { get; set; }

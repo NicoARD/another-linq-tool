@@ -42,6 +42,7 @@ static class Cli
 
         var assemblies = CollectOption(args, "--assembly");
         var imports = CollectOption(args, "--import");
+        var packages = CollectOption(args, "--package");
 
         var dbRequest = new LinqRunner.Data.DbContextRequest
         {
@@ -53,7 +54,7 @@ static class Cli
         };
 
         var source = await File.ReadAllTextAsync(file);
-        var result = await ScriptExecutor.ExecuteAsync(source, rowLimit, assemblies, imports, dbRequest, CancellationToken.None);
+        var result = await ScriptExecutor.ExecuteAsync(source, rowLimit, assemblies, imports, packages, dbRequest, CancellationToken.None);
 
         Console.WriteLine(JsonConvert.SerializeObject(result, JsonSettings));
         return result.Status == "success" ? 0 : 1;

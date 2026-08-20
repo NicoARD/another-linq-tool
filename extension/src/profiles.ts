@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
@@ -9,6 +10,7 @@ export type AssemblyEntry = string | { path: string; enabled?: boolean };
 export interface ProfileEntry {
     assemblies?: AssemblyEntry[];
     imports?: string[];
+    packages?: string[];
     context?: string;
     provider?: string;
     connectionString?: string;
@@ -31,6 +33,7 @@ export interface ResolvedProfile {
     name: string;
     assemblies: string[]; // absolute paths that exist
     imports: string[];
+    packages: string[];
     missing: string[]; // configured paths that do not exist
     context?: string;
     provider?: string;
@@ -47,16 +50,12 @@ export class ProfileManager {
     constructor(private readonly memento: vscode.Memento) {}
 
     listProfiles(): string[] {
-        const loaded = this.read();
-        return loaded ? Object.keys(loaded.config.profiles ?? {}) : [];
+        return [...this.readMerged().profiles.keys()];
     }
 
     getActiveName(): string | undefined {
-        const loaded = this.read();
-        if (!loaded) {
-            return undefined;
-        }
-        const names = Object.keys(loaded.config.profiles ?? {});
+        const merged = this.readMerged();
+        const names = [...merged.profiles.keys()];
         if (names.length === 0) {
             return undefined;
         }
@@ -64,8 +63,8 @@ export class ProfileManager {
         if (stored && names.includes(stored)) {
             return stored;
         }
-        if (loaded.config.defaultProfile && names.includes(loaded.config.defaultProfile)) {
-            return loaded.config.defaultProfile;
+        if (merged.defaultProfile && names.includes(merged.defaultProfile)) {
+            return merged.defaultProfile;
         }
         return names[0];
     }
@@ -75,18 +74,16 @@ export class ProfileManager {
     }
 
     resolveActive(): ResolvedProfile | undefined {
-        const loaded = this.read();
-        if (!loaded) {
-            return undefined;
-        }
+        const merged = this.readMerged();
         const name = this.getActiveName();
         if (!name) {
             return undefined;
         }
-        const raw = loaded.config.profiles?.[name];
-        if (!raw) {
+        const found = merged.profiles.get(name);
+        if (!found) {
             return undefined;
         }
+        const raw = found.entry;
 
         const assemblies: string[] = [];
         const missing: string[] = [];
@@ -95,7 +92,8 @@ export class ProfileManager {
             if (!normalized.enabled) {
                 continue;
             }
-            const abs = path.isAbsolute(normalized.path) ? normalized.path : path.resolve(loaded.dir, normalized.path);
+            // Relative paths resolve against the file that DEFINED the profile (global or workspace).
+            const abs = path.isAbsolute(normalized.path) ? normalized.path : path.resolve(found.dir, normalized.path);
             if (fs.existsSync(abs)) {
                 assemblies.push(abs);
             } else {
@@ -109,6 +107,7 @@ export class ProfileManager {
             name,
             assemblies,
             imports: raw.imports ?? [],
+            packages: raw.packages ?? [],
             missing,
             context: dbEnabled ? raw.context : undefined,
             provider: dbEnabled ? raw.provider : undefined,
@@ -147,6 +146,7 @@ export class ProfileManager {
         return folder ? path.join(folder.uri.fsPath, CONFIG_FILENAME) : undefined;
     }
 
+
     private read(): { config: ProfilesConfigFile; dir: string } | undefined {
         const configPath = this.findConfig();
         if (!configPath) {
@@ -168,5 +168,46 @@ export class ProfileManager {
             }
         }
         return undefined;
+    }
+
+    /** The global profiles file, shared across every VS Code instance and the CLI. */
+    globalConfigPath(): string {
+        return path.join(os.homedir(), '.linqrunner', CONFIG_FILENAME);
+    }
+
+    // Merges global profiles (base) with the workspace file (overrides by name). Each profile remembers
+    // the directory of the file that defined it, so relative assembly paths resolve correctly.
+    private readMerged(): { profiles: Map<string, { entry: ProfileEntry; dir: string }>; defaultProfile?: string } {
+        const profiles = new Map<string, { entry: ProfileEntry; dir: string }>();
+        let defaultProfile: string | undefined;
+
+        for (const file of [this.globalConfigPath(), this.findConfig()]) {
+            if (!file) {
+                continue;
+            }
+            const loaded = this.loadFile(file);
+            if (!loaded) {
+                continue;
+            }
+            for (const [profileName, entry] of Object.entries(loaded.config.profiles ?? {})) {
+                profiles.set(profileName, { entry, dir: loaded.dir });
+            }
+            if (loaded.config.defaultProfile) {
+                defaultProfile = loaded.config.defaultProfile;
+            }
+        }
+
+        return { profiles, defaultProfile };
+    }
+
+    private loadFile(filePath: string): { config: ProfilesConfigFile; dir: string } | undefined {
+        if (!fs.existsSync(filePath)) {
+            return undefined;
+        }
+        try {
+            return { config: JSON.parse(fs.readFileSync(filePath, 'utf8')) as ProfilesConfigFile, dir: path.dirname(filePath) };
+        } catch {
+            return undefined;
+        }
     }
 }

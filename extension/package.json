@@ -55,6 +55,10 @@
         "command": "linqRunner.configure",
         "title": "LINQ: Configure Profiles",
         "icon": "$(gear)"
+      },
+      {
+        "command": "linqRunner.openGlobalProfiles",
+        "title": "LINQ: Open Global Profiles"
       }
     ],
     "menus": {

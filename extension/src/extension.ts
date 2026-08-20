@@ -28,6 +28,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand('linqRunner.selectProfile', () => selectProfile()),
         vscode.commands.registerCommand('linqRunner.configure', () =>
             ConfigPanel.show(context, profiles, () => updateStatusBar())),
+        vscode.commands.registerCommand('linqRunner.openGlobalProfiles', () => openGlobalProfiles()),
     );
 }
 
@@ -47,7 +48,7 @@ async function selectProfile(): Promise<void> {
     const names = profiles.listProfiles();
     if (names.length === 0) {
         vscode.window.showInformationMessage(
-            'LINQ Runner: no profiles found. Add a linqrunner.json with a "profiles" section at the workspace root.',
+            'LINQ Runner: no profiles found. Add profiles to a workspace linqrunner.json, or run "LINQ: Open Global Profiles" to define them for all VS Code instances.',
         );
         return;
     }
@@ -133,6 +134,7 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
                     rowLimit,
                     profile?.assemblies ?? [],
                     profile?.imports ?? [],
+                    profile?.packages ?? [],
                     {
                         context: profile?.context,
                         provider: profile?.provider,
@@ -159,3 +161,28 @@ async function restartRunner(): Promise<void> {
     await client.restart();
     vscode.window.showInformationMessage('LINQ Runner: runner restarted.');
 }
+
+// Opens (creating if needed) the global profiles file shared across all VS Code instances.
+async function openGlobalProfiles(): Promise<void> {
+    const target = profiles.globalConfigPath();
+    if (!fs.existsSync(target)) {
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        const template = {
+            defaultProfile: 'app',
+            profiles: {
+                app: {
+                    assemblies: ['C:/path/to/YourApp/bin/Debug/net9.0/YourApp.Data.dll'],
+                    imports: ['YourApp.Data'],
+                    context: 'YourApp.Data.AppDbContext',
+                    provider: 'sqlserver',
+                    connectionString: 'Server=localhost;Database=YourDb;User Id=sa;Password=...;Encrypt=True;TrustServerCertificate=True',
+                },
+            },
+        };
+        fs.writeFileSync(target, JSON.stringify(template, null, 2) + '\n', 'utf8');
+    }
+    const doc = await vscode.workspace.openTextDocument(target);
+    await vscode.window.showTextDocument(doc);
+    updateStatusBar();
+}
+

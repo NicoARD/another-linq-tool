@@ -36,10 +36,27 @@ public static class ScriptExecutor
         int rowLimit,
         IReadOnlyList<string> assemblies,
         IReadOnlyList<string> imports,
+        IReadOnlyList<string> packages,
         DbContextRequest dbRequest,
         CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
+
+        // Restore any profile NuGet packages and add the resolved DLLs to the assembly set so the loader
+        // references and loads them (and their deps) exactly like application assemblies.
+        var effectiveAssemblies = assemblies;
+        if (packages.Count > 0)
+        {
+            try
+            {
+                var packageAssemblies = await Nuget.NuGetResolver.RestoreAsync(packages, "net9.0", cancellationToken);
+                effectiveAssemblies = [.. assemblies, .. packageAssemblies];
+            }
+            catch (Exception ex)
+            {
+                return InfrastructureError($"NuGet restore failed: {ex.Message}", ex, stopwatch);
+            }
+        }
 
         // Register the loaded user assemblies with Roslyn so both compilation (metadata references)
         // and execution (the registered instances) see the same types.
@@ -49,7 +66,7 @@ public static class ScriptExecutor
         UserAssemblyLoader.Result loaded;
         try
         {
-            loaded = UserAssemblyLoader.Load(assemblies);
+            loaded = UserAssemblyLoader.Load(effectiveAssemblies);
         }
         catch (Exception ex)
         {
