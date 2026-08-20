@@ -85,6 +85,15 @@ function getClient(context: vscode.ExtensionContext): RunnerClient {
     return client;
 }
 
+/** Reads an optional `@profile <name>` directive from the first line and returns the remaining script body. */
+function parseProfileDirective(text: string): { profileName?: string; body: string } {
+    const match = /^\s*(?:\/\/\s*)?@profile[ \t]+(.+?)[ \t]*(\r?\n|$)/.exec(text);
+    if (!match) {
+        return { body: text };
+    }
+    return { profileName: match[1].trim(), body: text.slice(match[0].length) };
+}
+
 function resolveRunnerPath(context: vscode.ExtensionContext, configured: string): string {
     if (configured) {
         return configured;
@@ -114,8 +123,14 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
     const rowLimit = vscode.workspace.getConfiguration('linqRunner').get<number>('rowLimit', 1000);
     const title = path.basename(editor.document.fileName);
 
-    const profile = await profiles.resolveActive();
-    const source = [profile?.prelude, editor.document.getText()]
+    const { profileName, body } = parseProfileDirective(editor.document.getText());
+    const profile = await profiles.resolveActive(profileName);
+    if (profileName && profile?.name !== profileName) {
+        vscode.window.showWarningMessage(
+            `Another LINQ Tool: profile "${profileName}" from the @profile directive was not found. Using "${profile?.name ?? 'no profile'}".`,
+        );
+    }
+    const source = [profile?.prelude, body]
         .filter((part): part is string => Boolean(part?.trim()))
         .join('\n\n');
     if (profile?.missing.length) {

@@ -115,9 +115,10 @@ export class ProfileManager {
         await this.globalState.update(ACTIVE_PROFILE_KEY, name);
     }
 
-    async resolveActive(): Promise<ResolvedProfile | undefined> {
+    async resolveActive(overrideName?: string): Promise<ResolvedProfile | undefined> {
         const config = this.readSettings();
-        const name = this.getActiveName();
+        const names = Object.keys(config.profiles ?? {});
+        const name = overrideName && names.includes(overrideName) ? overrideName : this.getActiveName();
         const raw = name && config.profiles?.[name];
         if (!name || !raw) {
             return undefined;

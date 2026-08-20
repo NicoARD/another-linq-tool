@@ -3,7 +3,7 @@
   "displayName": "Another LINQ Tool",
   "description": "Run C# scripts as interactive LINQ query windows.",
   "icon": "./icon.png",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "N-Tsoulos",
   "license": "CC-BY-NC-4.0",
   "repository": {

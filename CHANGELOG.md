@@ -8,6 +8,12 @@ All notable changes to Another LINQ Tool are documented in this file.
 - Run `.linq` and `.csx` C# LINQ scripts directly from VS Code.
 - Support execution profiles for assemblies, imports, NuGet packages, and EF Core contexts.
 
+## 1.0.2
+
+- Bundle the `vscode-jsonrpc` runtime dependency in the packaged extension so commands are available after installing from a VSIX or the Marketplace.
+- Run scripts with the selected (active) profile instead of the default profile.
+- Support a first-line `@profile <name>` directive to override the profile for a single run.
+
 ## 1.0.1
 
 - Explicitly activate the extension when any contributed command is invoked.
