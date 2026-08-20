@@ -6,6 +6,7 @@
 node_modules/
 out/
 *.vsix
+extension/runner/
 
 # Editor
 .vs/

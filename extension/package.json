@@ -3,16 +3,25 @@
   "displayName": "Another LINQ Tool",
   "description": "Run C# scripts as interactive LINQ query windows.",
   "icon": "./icon.png",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "publisher": "another-linq-tool",
   "license": "CC-BY-NC-4.0",
-  "private": true,
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
     "Programming Languages",
     "Other"
+  ],
+  "keywords": [
+    "linq",
+    "csharp",
+    "dotnet",
+    "query",
+    "script"
+  ],
+  "extensionKind": [
+    "workspace"
   ],
   "main": "./out/extension.js",
   "activationEvents": [
@@ -90,7 +99,7 @@
           "type": "string",
           "default": "",
           "scope": "machine",
-          "description": "Absolute path to LinqRunner.dll. When empty, the bundled ../runner build is used."
+          "description": "Absolute path to LinqRunner.dll. When empty, the runner bundled with this extension is used."
         },
         "linqRunner.rowLimit": {
           "type": "number",
@@ -117,13 +126,18 @@
     }
   },
   "scripts": {
+    "build:runner": "node ./scripts/build-runner.js",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "vscode:prepublish": "npm run compile"
+    "vscode:prepublish": "npm run build:runner && npm run compile",
+    "prepackage": "node ./scripts/check-release-node.js",
+    "package": "vsce package --no-dependencies",
+    "release:check": "npm run build:runner && npm run compile && npm run package"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.7.1",
     "typescript": "^5.4.0"
   },
   "dependencies": {

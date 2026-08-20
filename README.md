@@ -9,19 +9,18 @@ It supports ordinary C# scripts, external assemblies and imports, NuGet packages
 You need:
 
 - .NET SDK 9.0 or newer
-- Node.js 18 or newer
+- Node.js 20 or newer
 - Visual Studio Code 1.85 or newer
 
-From this directory, build the runner and extension:
+From this directory, build a release-candidate VSIX:
 
 ```powershell
-dotnet build runner/LinqRunner
 cd extension
 npm install
-npm run compile
+npm run release:check
 ```
 
-For local development, open the `extension` folder in VS Code and press <kbd>F5</kbd>. In the Extension Development Host window, open a script in `../examples`, then press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or run **Another LINQ Tool: Run Current File**.
+`release:check` publishes the .NET runner into the extension, compiles TypeScript, and creates a `.vsix` package. Install that VSIX in a clean VS Code profile to validate the release artifact. For local development, open the `extension` folder in VS Code and press <kbd>F5</kbd>. In the Extension Development Host window, open a script in `../examples`, then press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or run **Another LINQ Tool: Run Current File**.
 
 The complete extension setup, usage, profiles, and settings guide is in [extension/README.md](extension/README.md).
 

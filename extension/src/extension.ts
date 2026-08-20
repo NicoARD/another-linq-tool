@@ -86,12 +86,7 @@ function resolveRunnerPath(context: vscode.ExtensionContext, configured: string)
     }
     return path.join(
         context.extensionPath,
-        '..',
         'runner',
-        'LinqRunner',
-        'bin',
-        'Debug',
-        'net9.0',
         'LinqRunner.dll',
     );
 }
@@ -106,7 +101,7 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
     const runnerPath = resolveRunnerPath(context, vscode.workspace.getConfiguration('linqRunner').get<string>('runnerPath', ''));
     if (!fs.existsSync(runnerPath)) {
         vscode.window.showErrorMessage(
-            `Another LINQ Tool: runner not found at ${runnerPath}. Build it with "dotnet build" in runner/LinqRunner.`,
+            `Another LINQ Tool: bundled runner not found at ${runnerPath}. Reinstall the extension or set Another LINQ Tool: Runner Path.`,
         );
         return;
     }

@@ -6,7 +6,7 @@ Run C# LINQ scripts directly from VS Code. The extension sends the active script
 
 - VS Code 1.85 or newer
 - .NET SDK 9.0 or newer
-- A built `LinqRunner.dll` (see [Running from source](#running-from-source))
+- .NET 9 runtime (the extension ships with its own runner)
 
 ## Running a script
 
@@ -31,21 +31,24 @@ The script is executed as C# code with your user permissions. Treat scripts, ref
 This repository keeps the extension and runner side by side. From the repository root:
 
 ```powershell
-dotnet build runner/LinqRunner
 cd extension
 npm install
-npm run compile
+npm run release:check
 ```
 
 Open the `extension` folder in VS Code and press <kbd>F5</kbd>. This launches an Extension Development Host. In that window, open one of `../examples/*.linq` and run it.
 
-By default, the development extension looks for the runner at:
+The release build publishes the runner into the extension at:
 
 ```text
-../runner/LinqRunner/bin/Debug/net9.0/LinqRunner.dll
+runner/LinqRunner.dll
 ```
 
-If your runner is elsewhere, set `anotherLinqTool.runnerPath` as described below.
+If you need to use a different runner build, set `linqRunner.runnerPath` as described below.
+
+`npm run release:check` creates a `.vsix` package. Install it in VS Code with **Extensions: Install from VSIX...** to test the same artifact that will be released.
+
+Building from source requires the .NET 9 SDK and Node.js 20 or newer. Installed VSIX users need only a .NET 9 runtime.
 
 ## Configuration
 
@@ -71,7 +74,7 @@ Open **Another LINQ Tool: Open Settings** from the Command Palette, or edit VS C
 | Setting | Default | Purpose |
 | --- | --- | --- |
 | `linqRunner.dotnetPath` | `dotnet` | Path or command used to start the .NET runtime. |
-| `linqRunner.runnerPath` | empty | Absolute path to `LinqRunner.dll`. Leave empty for the adjacent development build. |
+| `linqRunner.runnerPath` | empty | Absolute path to `LinqRunner.dll`. Leave empty to use the runner bundled with the extension. |
 | `linqRunner.rowLimit` | `1000` | Maximum number of items shown for sequence results. |
 | `linqRunner.profiles` | `{}` | Named profiles. Prefer the profile editor over manual changes. |
 | `linqRunner.defaultProfile` | empty | Profile selected when no explicit active profile has been chosen. |
@@ -117,7 +120,7 @@ Build the assembly containing the context before running. The extension reports 
 
 ## Troubleshooting
 
-- **Runner not found:** build it with `dotnet build runner/LinqRunner`, or set `linqRunner.runnerPath` to its absolute DLL path.
+- **Runner not found:** reinstall the extension, or set `linqRunner.runnerPath` to an absolute DLL path.
 - **`dotnet` cannot start:** install .NET 9 SDK or set `linqRunner.dotnetPath` to the appropriate executable.
 - **Missing types or namespaces:** select the correct profile and add the required assembly and import.
 - **Missing profile assembly:** build the referenced project and update the assembly path if its output location changed.
@@ -125,4 +128,4 @@ Build the assembly containing the context before running. The extension reports 
 
 ## License
 
-The extension is covered by the repository's [CC BY-NC 4.0 license](../LICENSE): free to use, modify, and fork non-commercially; not permitted for sale or other commercial use.
+The extension is covered by the [CC BY-NC 4.0 license](LICENSE): free to use, modify, and fork non-commercially; not permitted for sale or other commercial use.
