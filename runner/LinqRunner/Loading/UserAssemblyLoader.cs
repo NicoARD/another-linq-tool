@@ -32,6 +32,11 @@ public static class UserAssemblyLoader
     // directories the configured assemblies live in, used to probe managed + native dependencies.
     private static readonly HashSet<string> ProbeDirectories = new(StringComparer.OrdinalIgnoreCase);
 
+    // deps.json-driven resolvers (one per configured assembly) that pick the correct RID-specific files
+    // (e.g. runtimes/win/lib/... for Microsoft.Data.SqlClient) rather than the throwing bin-root facade.
+    private static readonly List<AssemblyDependencyResolver> DepsResolvers = [];
+    private static readonly HashSet<string> DepsResolverPaths = new(StringComparer.OrdinalIgnoreCase);
+
     private static bool resolverInstalled;
 
     public sealed class Result
@@ -62,6 +67,7 @@ public static class UserAssemblyLoader
                 }
 
                 ProbeDirectories.Add(directory);
+                ProbeDirectories.Add(directory);
 
                 foreach (var dll in Directory.EnumerateFiles(directory, "*.dll"))
                 {
@@ -71,6 +77,18 @@ public static class UserAssemblyLoader
 
             foreach (var path in fullPaths)
             {
+                if (DepsResolverPaths.Add(path))
+                {
+                    try
+                    {
+                        DepsResolvers.Add(new AssemblyDependencyResolver(path));
+                    }
+                    catch
+                    {
+                        // No deps.json beside this assembly; sibling probing still applies.
+                    }
+                }
+
                 var bytes = File.ReadAllBytes(path);
 
                 if (!LoadedByPath.TryGetValue(path, out var assembly))
@@ -132,6 +150,58 @@ public static class UserAssemblyLoader
             .FirstOrDefault(a => string.Equals(a.GetName().Name, simpleName, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Finds a type by full name across the explicitly loaded assemblies, already-loaded assemblies, and
+    /// finally the (lazily loaded) sibling DLLs in the probed directories. This lets a DbContext declared
+    /// in a referenced-project assembly be found even when only one DLL from the folder was configured.
+    /// </summary>
+    public static Type? ResolveType(string fullName, IReadOnlyList<Assembly> preferred)
+    {
+        foreach (var assembly in preferred)
+        {
+            if (assembly.GetType(fullName) is { } type)
+            {
+                return type;
+            }
+        }
+
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (assembly.GetType(fullName) is { } type)
+            {
+                return type;
+            }
+        }
+
+        List<string> siblingNames;
+        lock (Gate)
+        {
+            siblingNames = ProbeRegistry.Keys.ToList();
+        }
+
+        foreach (var name in siblingNames)
+        {
+            if (FrameworkReferences.Names.Contains(name))
+            {
+                continue;
+            }
+
+            try
+            {
+                if (LoadByName(name)?.GetType(fullName) is { } type)
+                {
+                    return type;
+                }
+            }
+            catch
+            {
+                // Skip anything that isn't a loadable managed assembly.
+            }
+        }
+
+        return null;
+    }
+
     private static void InstallResolver()
     {
         if (resolverInstalled)
@@ -148,6 +218,23 @@ public static class UserAssemblyLoader
 
             lock (Gate)
             {
+                // deps.json-driven resolution first (handles RID-specific assemblies like Microsoft.Data.SqlClient).
+                foreach (var resolver in DepsResolvers)
+                {
+                    var resolved = resolver.ResolveAssemblyToPath(name);
+                    if (resolved is not null && File.Exists(resolved))
+                    {
+                        try
+                        {
+                            return context.LoadFromStream(new MemoryStream(File.ReadAllBytes(resolved)));
+                        }
+                        catch
+                        {
+                            // try the next resolver / the flat probe fallback.
+                        }
+                    }
+                }
+
                 if (ProbeRegistry.TryGetValue(name.Name, out var path) && File.Exists(path))
                 {
                     try
@@ -170,6 +257,15 @@ public static class UserAssemblyLoader
         {
             lock (Gate)
             {
+                foreach (var resolver in DepsResolvers)
+                {
+                    var resolved = resolver.ResolveUnmanagedDllToPath(libraryName);
+                    if (resolved is not null && File.Exists(resolved) && NativeLibrary.TryLoad(resolved, out var resolvedHandle))
+                    {
+                        return resolvedHandle;
+                    }
+                }
+
                 foreach (var directory in NativeProbeDirectories())
                 {
                     foreach (var candidate in NativeFileNames(libraryName))

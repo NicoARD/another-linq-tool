@@ -137,8 +137,7 @@ public static class DbContextBuilder
 
     private static Type? FindType(string fullName, IReadOnlyList<Assembly> loadedAssemblies)
     {
-        return loadedAssemblies.Select(a => a.GetType(fullName)).FirstOrDefault(t => t is not null)
-            ?? AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType(fullName)).FirstOrDefault(t => t is not null);
+        return UserAssemblyLoader.ResolveType(fullName, loadedAssemblies);
     }
 
     private static Assembly RequireAssembly(string simpleName)

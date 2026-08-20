@@ -7,7 +7,6 @@
     <Nullable>enable</Nullable>
     <AssemblyName>LinqRunner</AssemblyName>
     <RootNamespace>LinqRunner</RootNamespace>
-    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>
