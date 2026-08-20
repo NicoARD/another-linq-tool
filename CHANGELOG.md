@@ -7,3 +7,7 @@ All notable changes to Another LINQ Tool are documented in this file.
 - Initial release of the VS Code extension and self-contained .NET runner.
 - Run `.linq` and `.csx` C# LINQ scripts directly from VS Code.
 - Support execution profiles for assemblies, imports, NuGet packages, and EF Core contexts.
+
+## 1.0.1
+
+- Explicitly activate the extension when any contributed command is invoked.
