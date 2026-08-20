@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { ProfileManager, ProfilesConfigFile } from './profiles';
 
@@ -21,8 +22,8 @@ export class ConfigPanel {
         panel.onDidDispose(() => (this.panel = undefined));
 
         const post = () => {
-            const { config, path } = profiles.readConfigForEdit();
-            panel.webview.postMessage({ type: 'init', config, configPath: path });
+            const { config } = profiles.readConfigForEdit();
+            panel.webview.postMessage({ type: 'init', config });
         };
 
         panel.webview.onDidReceiveMessage(async (message) => {
@@ -38,6 +39,36 @@ export class ConfigPanel {
                     });
                     if (picked && picked[0]) {
                         panel.webview.postMessage({ type: 'assemblyPicked', path: toStorablePath(profiles, picked[0].fsPath) });
+                    }
+                    break;
+                }
+                case 'exportProfile': {
+                    const uri = await vscode.window.showSaveDialog({
+                        saveLabel: 'Export profile',
+                        filters: { 'LINQ profile': ['json'] },
+                        defaultUri: vscode.Uri.file((message.name || 'profile') + '.linqprofile.json'),
+                    });
+                    if (uri) {
+                        const content = JSON.stringify({ profiles: { [message.name]: message.profile } }, null, 2) + '\n';
+                        fs.writeFileSync(uri.fsPath, content, 'utf8');
+                        vscode.window.showInformationMessage('LINQ Runner: exported profile to ' + uri.fsPath);
+                    }
+                    break;
+                }
+                case 'importProfile': {
+                    const picked = await vscode.window.showOpenDialog({
+                        canSelectMany: false,
+                        openLabel: 'Import profile',
+                        filters: { 'LINQ profile / config': ['json'] },
+                    });
+                    if (picked && picked[0]) {
+                        try {
+                            const parsed = JSON.parse(fs.readFileSync(picked[0].fsPath, 'utf8'));
+                            const imported = parsed && parsed.profiles ? parsed.profiles : parsed;
+                            panel.webview.postMessage({ type: 'profilesImported', profiles: imported });
+                        } catch (err) {
+                            vscode.window.showErrorMessage('LINQ Runner: import failed — ' + String(err));
+                        }
                     }
                     break;
                 }
@@ -95,14 +126,15 @@ function html(webview: vscode.Webview): string {
 </head>
 <body>
 <h2>LINQ Runner Configuration</h2>
-<div class="path" id="configPath"></div>
 
 <div class="row">
     <label style="margin:0">Profile</label>
     <select id="profileSelect" class="grow"></select>
     <button class="secondary" id="newProfile">New</button>
-    <button class="secondary" id="renameProfile">Rename</button>
+    <button class="secondary" id="cloneProfile">Clone</button>
     <button class="secondary" id="deleteProfile">Delete</button>
+    <button class="secondary" id="exportProfile">Export</button>
+    <button class="secondary" id="importProfile">Import</button>
 </div>
 <div class="row"><label style="margin:0"><input type="checkbox" id="isDefault" /> Default profile</label></div>
 
@@ -147,6 +179,7 @@ function render() {
     }).join('');
 
     editor.innerHTML =
+        '<label>Name</label><input type="text" id="profileName" value="' + escapeAttr(selected) + '" />' +
         '<fieldset><legend>Assemblies (DLLs)</legend>' + asmRows +
             '<div class="row"><button class="secondary" id="addAssembly">Add DLL…</button></div>' +
             '<div class="muted">Point at your application\\'s build output so EF Core and native deps are alongside the DLL.</div>' +
@@ -218,29 +251,55 @@ document.getElementById('newProfile').onclick = () => {
     let i = 1, name = 'profile'; while (config.profiles[name]) name = 'profile' + (++i);
     config.profiles[name] = { assemblies: [], imports: [] }; selected = name; render();
 };
-document.getElementById('renameProfile').onclick = () => {
-    const next = prompt('Rename profile', selected); if (!next || next === selected || config.profiles[next]) return;
-    config.profiles[next] = config.profiles[selected]; delete config.profiles[selected];
-    if (config.defaultProfile === selected) config.defaultProfile = next;
-    selected = next; render();
+document.getElementById('cloneProfile').onclick = () => {
+    if (!selected) return;
+    let base = selected + ' copy', name = base, i = 1;
+    while (config.profiles[name]) name = base + ' ' + (++i);
+    config.profiles[name] = JSON.parse(JSON.stringify(config.profiles[selected]));
+    selected = name; render();
 };
+document.getElementById('exportProfile').onclick = () => {
+    if (selected) vscode.postMessage({ type: 'exportProfile', name: selected, profile: config.profiles[selected] });
+};
+document.getElementById('importProfile').onclick = () => vscode.postMessage({ type: 'importProfile' });
 document.getElementById('deleteProfile').onclick = () => {
     if (!selected) return; delete config.profiles[selected];
     if (config.defaultProfile === selected) config.defaultProfile = undefined;
     selected = undefined; render();
 };
-document.getElementById('save').onclick = () => vscode.postMessage({ type: 'save', config });
+document.getElementById('save').onclick = () => {
+    const nameEl = document.getElementById('profileName');
+    if (nameEl && selected) {
+        const newName = nameEl.value.trim();
+        if (newName && newName !== selected && !config.profiles[newName]) {
+            config.profiles[newName] = config.profiles[selected];
+            delete config.profiles[selected];
+            if (config.defaultProfile === selected) config.defaultProfile = newName;
+            selected = newName;
+        }
+    }
+    vscode.postMessage({ type: 'save', config });
+};
 
 window.addEventListener('message', e => {
     const m = e.data;
     if (m.type === 'init') {
         config = m.config || { profiles: {} }; config.profiles = config.profiles || {};
-        document.getElementById('configPath').textContent = m.configPath || '(will be created at workspace root)';
         render();
     } else if (m.type === 'assemblyPicked') {
         const p = config.profiles[selected]; if (p) { (p.assemblies = p.assemblies || []).push(m.path); render(); }
+    } else if (m.type === 'profilesImported') {
+        let last;
+        for (const entry of Object.entries(m.profiles || {})) {
+            const name = entry[0]; let target = name, i = 1;
+            while (config.profiles[target]) target = name + ' (' + (++i) + ')';
+            config.profiles[target] = entry[1]; last = target;
+        }
+        if (last) selected = last;
+        render();
     } else if (m.type === 'saved') {
         document.getElementById('status').textContent = m.path ? 'Saved to ' + m.path : 'No workspace folder to save into.';
+        render();
     }
 });
 
