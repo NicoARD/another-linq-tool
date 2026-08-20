@@ -46,6 +46,8 @@ function renderHtml(result: ExecuteResult): string {
     .diag { color: var(--vscode-editorWarning-foreground); }
     .truncated { color: var(--vscode-editorWarning-foreground); font-size: 12px; margin-top: 8px; }
     .null { color: var(--vscode-descriptionForeground); font-style: italic; }
+    .section { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--vscode-descriptionForeground); margin: 4px 0; }
+    .console { white-space: pre-wrap; background: var(--vscode-textCodeBlock-background); padding: 8px; border-radius: 4px; font-size: 13px; margin-bottom: 12px; }
 </style>
 </head>
 <body>
@@ -56,16 +58,25 @@ ${body}
 }
 
 function renderBody(result: ExecuteResult): string {
+    const consoleBlock = result.output ? renderConsole(result.output, result.outputTruncated) : '';
+
+    let main: string;
     if (result.status === 'compileError') {
-        return renderDiagnostics(result);
+        main = renderDiagnostics(result);
+    } else if (result.status === 'runtimeError') {
+        main = renderError(result);
+    } else if (result.status === 'cancelled') {
+        main = `<div class="diag">Execution cancelled.</div>`;
+    } else {
+        main = result.value ? renderNode(result.value) : `<div class="null">no value</div>`;
     }
-    if (result.status === 'runtimeError') {
-        return renderError(result);
-    }
-    if (result.status === 'cancelled') {
-        return `<div class="diag">Execution cancelled.</div>`;
-    }
-    return result.value ? renderNode(result.value) : `<div class="null">no value</div>`;
+
+    return consoleBlock + main;
+}
+
+function renderConsole(output: string, truncated?: boolean): string {
+    const note = truncated ? `<div class="truncated">Console output truncated.</div>` : '';
+    return `<div class="section">Console output</div><pre class="console">${escape(output)}</pre>${note}`;
 }
 
 function renderNode(node: ResultNode): string {

@@ -13,6 +13,11 @@ namespace LinqRunner.Scripting;
 /// </summary>
 public static class ScriptExecutor
 {
+    private const int OutputLimit = 64 * 1024;
+
+    // Console redirection is process-global, so executions are serialized.
+    private static readonly SemaphoreSlim ExecutionGate = new(1, 1);
+
     private static readonly string[] DefaultImports =
     [
         "System",
@@ -52,26 +57,35 @@ public static class ScriptExecutor
             };
         }
 
+        // The script's Console output is captured so it (a) never corrupts the stdio RPC channel
+        // and (b) can be shown alongside the result. Console.Out/Error are process-global, hence the gate.
+        var captured = new BoundedTextWriter(OutputLimit);
+        var originalOut = Console.Out;
+        var originalError = Console.Error;
+        await ExecutionGate.WaitAsync(cancellationToken);
         try
         {
+            Console.SetOut(captured);
+            Console.SetError(captured);
+
             var state = await script.RunAsync(globals: null, catchException: _ => true, cancellationToken);
 
             if (state.Exception is not null)
             {
-                return RuntimeError(state.Exception, stopwatch, diagnostics);
+                return Attach(RuntimeError(state.Exception, stopwatch, diagnostics), captured);
             }
 
-            return new ExecuteResult
+            return Attach(new ExecuteResult
             {
                 Status = "success",
                 Value = ResultSerializer.Serialize(state.ReturnValue, rowLimit),
                 Diagnostics = Map(diagnostics, warningsOnly: true),
                 ElapsedMs = stopwatch.ElapsedMilliseconds,
-            };
+            }, captured);
         }
         catch (OperationCanceledException)
         {
-            return new ExecuteResult { Status = "cancelled", ElapsedMs = stopwatch.ElapsedMilliseconds };
+            return Attach(new ExecuteResult { Status = "cancelled", ElapsedMs = stopwatch.ElapsedMilliseconds }, captured);
         }
         catch (CompilationErrorException ex)
         {
@@ -84,8 +98,26 @@ public static class ScriptExecutor
         }
         catch (Exception ex)
         {
-            return RuntimeError(ex, stopwatch);
+            return Attach(RuntimeError(ex, stopwatch), captured);
         }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalError);
+            ExecutionGate.Release();
+        }
+    }
+
+    private static ExecuteResult Attach(ExecuteResult result, BoundedTextWriter captured)
+    {
+        var text = captured.ToString();
+        if (text.Length > 0)
+        {
+            result.Output = text;
+            result.OutputTruncated = captured.Truncated ? true : null;
+        }
+
+        return result;
     }
 
     private static ExecuteResult RuntimeError(Exception ex, Stopwatch stopwatch, IEnumerable<Diagnostic>? diagnostics = null) => new()

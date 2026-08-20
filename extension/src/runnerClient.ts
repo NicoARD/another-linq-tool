@@ -43,6 +43,8 @@ export interface ExecuteResult {
     value?: ResultNode;
     diagnostics?: DiagnosticInfo[];
     error?: ErrorInfo;
+    output?: string;
+    outputTruncated?: boolean;
     elapsedMs: number;
 }
 

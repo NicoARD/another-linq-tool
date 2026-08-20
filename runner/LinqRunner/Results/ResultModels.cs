@@ -8,6 +8,8 @@ public sealed class ExecuteResult
     public ResultNode? Value { get; set; }
     public List<DiagnosticInfo>? Diagnostics { get; set; }
     public ErrorInfo? Error { get; set; }
+    public string? Output { get; set; }
+    public bool? OutputTruncated { get; set; }
     public long ElapsedMs { get; set; }
 }
 

@@ -30,16 +30,6 @@
         "configuration": "./language-configuration.json"
       }
     ],
-    "commands": [
-      {
-        "command": "linqRunner.runCurrentFile",
-        "title": "LINQ: Run Current File"
-      },
-      {
-        "command": "linqRunner.restartRunner",
-        "title": "LINQ: Restart Runner"
-      }
-    ],
     "keybindings": [
       {
         "command": "linqRunner.runCurrentFile",
@@ -47,8 +37,19 @@
         "when": "editorTextFocus && resourceExtname == .csx"
       }
     ],
+    "commands": [
+      {
+        "command": "linqRunner.runCurrentFile",
+        "title": "LINQ: Run Current File",
+        "icon": "$(play)"
+      },
+      {
+        "command": "linqRunner.restartRunner",
+        "title": "LINQ: Restart Runner"
+      }
+    ],
     "menus": {
-      "editor/title/run": [
+      "editor/title": [
         {
           "command": "linqRunner.runCurrentFile",
           "when": "resourceExtname == .csx",
