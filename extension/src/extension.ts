@@ -111,11 +111,13 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
         return;
     }
 
-    const source = editor.document.getText();
     const rowLimit = vscode.workspace.getConfiguration('linqRunner').get<number>('rowLimit', 1000);
     const title = path.basename(editor.document.fileName);
 
     const profile = await profiles.resolveActive();
+    const source = [profile?.prelude, editor.document.getText()]
+        .filter((part): part is string => Boolean(part?.trim()))
+        .join('\n\n');
     if (profile?.missing.length) {
         output.appendLine(
             `Profile "${profile.name}": ${profile.missing.length} configured assembly path(s) not found:\n  ${profile.missing.join('\n  ')}`,

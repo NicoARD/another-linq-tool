@@ -15,6 +15,7 @@ export interface ProfileEntry {
     assemblies?: AssemblyEntry[];
     imports?: string[];
     packages?: string[];
+    prelude?: string;
     context?: string;
     provider?: string;
     connectionString?: string;
@@ -38,6 +39,7 @@ export interface ResolvedProfile {
     assemblies: string[];
     imports: string[];
     packages: string[];
+    prelude?: string;
     missing: string[];
     context?: string;
     provider?: string;
@@ -139,6 +141,7 @@ export class ProfileManager {
             assemblies,
             imports: raw.imports ?? [],
             packages: raw.packages ?? [],
+            prelude: raw.prelude,
             missing,
             context: dbEnabled ? raw.context : undefined,
             provider: dbEnabled ? raw.provider : undefined,

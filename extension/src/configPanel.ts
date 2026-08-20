@@ -188,6 +188,9 @@ function render() {
         '<textarea id="imports">' + escapeHtml((p.imports || []).join('\\n')) + '</textarea>' +
         '<label>NuGet packages (one per line, e.g. Dapper@2.1.66)</label>' +
         '<textarea id="packages" placeholder="Dapper@2.1.66">' + escapeHtml((p.packages || []).join('\\n')) + '</textarea>' +
+        '<label>Run before every script (C#)</label>' +
+        '<textarea id="prelude" placeholder="// Variables, helper methods, or setup statements">' + escapeHtml(p.prelude || '') + '</textarea>' +
+        '<div class="muted">This snippet is prepended to every script run with this profile.</div>' +
         '<fieldset><legend>Database</legend>' +
             '<div class="row"><label style="margin:0"><input type="checkbox" id="dbEnabled"' + (dbEnabled ? ' checked' : '') + ' /> Enable database (expose <code>Db</code>)</label></div>' +
             '<div id="dbFields" style="' + (dbEnabled ? '' : 'opacity:.5;pointer-events:none') + '">' +
@@ -227,6 +230,7 @@ function wireEditor() {
 
     bind('imports', v => p.imports = v.split('\\n').map(s => s.trim()).filter(Boolean));
     bind('packages', v => p.packages = v.split('\\n').map(s => s.trim()).filter(Boolean));
+    bind('prelude', v => p.prelude = v || undefined);
     bind('context', v => p.context = v || undefined);
     bind('connectionString', v => p.connectionString = v || undefined);
     bind('factoryType', v => setFactory(p, 'type', v));

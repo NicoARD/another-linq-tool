@@ -54,13 +54,15 @@ If your runner is elsewhere, set `anotherLinqTool.runnerPath` as described below
 Profiles group the assemblies, namespaces, NuGet packages, and optional database context needed by related scripts. They are global VS Code user settings, so the same profiles are available in every workspace.
 
 1. Run **Another LINQ Tool: Configure Profiles**.
-2. Select **New**, give the profile a name, and add its assemblies, imports, and packages.
+2. Select **New**, give the profile a name, and add its assemblies, imports, packages, and optional setup snippet.
 3. For database scripts, enable database support and supply the context type, provider, connection string, and (when needed) context factory information.
 4. Select **Save**. Use the status-bar profile name or **Another LINQ Tool: Select Profile** to make it active.
 
 The profile editor can import and export JSON profile files. Exported files may include connection strings; store them securely and do not commit them.
 
 Connection strings saved through the editor are held in VS Code Secret Storage. Profile names and other non-secret values are stored in the global `linqRunner.*` user settings.
+
+The **Run before every script** field accepts C# code that is prepended to each script executed with that profile. Use it for helper methods, variables, or one-time setup statements; it runs in the same script context, so declarations are available to the active script.
 
 ### Settings
 
