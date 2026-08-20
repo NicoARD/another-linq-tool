@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import { RunnerClient } from './runnerClient';
 import { ResultPanel } from './resultPanel';
 import { ProfileManager } from './profiles';
+import { ConfigPanel } from './configPanel';
 
 let client: RunnerClient | undefined;
 let output: vscode.OutputChannel;
@@ -25,6 +26,8 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand('linqRunner.runCurrentFile', () => runCurrentFile(context)),
         vscode.commands.registerCommand('linqRunner.restartRunner', () => restartRunner()),
         vscode.commands.registerCommand('linqRunner.selectProfile', () => selectProfile()),
+        vscode.commands.registerCommand('linqRunner.configure', () =>
+            ConfigPanel.show(context, profiles, () => updateStatusBar())),
     );
 }
 

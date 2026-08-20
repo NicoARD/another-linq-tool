@@ -5,7 +5,11 @@
       "assemblies": [
         "C:/code/hyperio/electra/services/Hyperio.Assets.Api/src/Hyperio.Assets.Api/bin/Debug/net9.0/Hyperio.Assets.Models.dll"
       ],
-      "imports": ["Hyperio.Assets.Models.Dto.Assets"]
+      "imports": [
+        "Hyperio.Assets.Models.Dto.Asaa"
+      ],
+      "dbEnabled": true,
+      "provider": "sqlserver"
     }
   }
 }

@@ -50,12 +50,22 @@
       {
         "command": "linqRunner.selectProfile",
         "title": "LINQ: Select Profile"
+      },
+      {
+        "command": "linqRunner.configure",
+        "title": "LINQ: Configure Profiles",
+        "icon": "$(gear)"
       }
     ],
     "menus": {
       "editor/title": [
         {
           "command": "linqRunner.runCurrentFile",
+          "when": "resourceExtname == .csx",
+          "group": "navigation"
+        },
+        {
+          "command": "linqRunner.configure",
           "when": "resourceExtname == .csx",
           "group": "navigation"
         }
