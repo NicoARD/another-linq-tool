@@ -1,8 +1,8 @@
 # Another LINQ Tool
 
-Another LINQ Tool is a VS Code extension and .NET runner for executing C# LINQ scripts. Open a `.linq.csx` or `.csx` file, run it with <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, and inspect the final value (and any `Dump()` calls) in VS Code.
+Another LINQ Tool is a VS Code extension and .NET runner for executing C# LINQ scripts. Open a `.linq` or `.csx` file, run it with <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, and inspect the final value (and any `Dump()` calls) in VS Code.
 
-It is currently a proof of concept. It supports ordinary C# scripts, external assemblies and imports, NuGet packages, and opt-in EF Core `DbContext` profiles.
+It supports ordinary C# scripts, external assemblies and imports, NuGet packages, and opt-in EF Core `DbContext` profiles.
 
 ## Quick start
 
@@ -41,17 +41,17 @@ The extension starts the runner and communicates with it through JSON-RPC over s
 Run a script directly through the runner:
 
 ```powershell
-dotnet run --project runner/LinqRunner -- execute examples/hello.linq.csx
+dotnet run --project runner/LinqRunner -- execute examples/hello.linq
 ```
 
 The runner writes the serialized result to standard output. This is useful for checking runner behavior independently of VS Code.
 
 ## Samples
 
-- `examples/hello.linq.csx` — basic LINQ query
-- `examples/dump.linq.csx` — inline `Dump()` output
-- `examples/using-dll.linq.csx` — types from an external assembly
-- `examples/db-query.linq.csx` — EF Core profile and SQLite database
+- `examples/hello.linq` — basic LINQ query
+- `examples/dump.linq` — inline `Dump()` output
+- `examples/using-dll.linq` — types from an external assembly
+- `examples/db-query.linq` — EF Core profile and SQLite database
 
 To use the assembly or database samples, first build the fixture:
 

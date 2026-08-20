@@ -1,10 +1,10 @@
 {
-  "name": "linq-runner-poc",
+  "name": "another-linq-tool",
   "displayName": "Another LINQ Tool",
   "description": "Run C# scripts as interactive LINQ query windows.",
   "icon": "./icon.png",
   "version": "0.0.1",
-  "publisher": "poc",
+  "publisher": "another-linq-tool",
   "license": "CC-BY-NC-4.0",
   "private": true,
   "engines": {
@@ -26,7 +26,7 @@
           "LINQ C# Script"
         ],
         "extensions": [
-          ".linq.csx",
+          ".linq",
           ".csx"
         ],
         "configuration": "./language-configuration.json"
@@ -36,7 +36,7 @@
       {
         "command": "linqRunner.runCurrentFile",
         "key": "ctrl+enter",
-        "when": "editorTextFocus && resourceExtname == .csx"
+        "when": "editorTextFocus && (resourceExtname == .linq || resourceExtname == .csx)"
       }
     ],
     "commands": [
@@ -60,19 +60,19 @@
       },
       {
         "command": "linqRunner.openGlobalProfiles",
-        "title": "Another LINQ Tool: Open Settings"
+        "title": "Another LINQ Tool: Configure Global Profiles"
       }
     ],
     "menus": {
       "editor/title": [
         {
           "command": "linqRunner.runCurrentFile",
-          "when": "resourceExtname == .csx",
+          "when": "resourceExtname == .linq || resourceExtname == .csx",
           "group": "navigation"
         },
         {
           "command": "linqRunner.configure",
-          "when": "resourceExtname == .csx",
+          "when": "resourceExtname == .linq || resourceExtname == .csx",
           "group": "navigation"
         }
       ]

@@ -10,7 +10,7 @@ Run C# LINQ scripts directly from VS Code. The extension sends the active script
 
 ## Running a script
 
-1. Open a `.linq.csx` or `.csx` file in VS Code.
+1. Open a `.linq` or `.csx` file in VS Code.
 2. Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, select the play button in the editor title bar, or run **Another LINQ Tool: Run Current File** from the Command Palette.
 3. Review the result panel. The final expression is displayed when it has no trailing semicolon; `Dump()` calls display intermediate values.
 
@@ -37,7 +37,7 @@ npm install
 npm run compile
 ```
 
-Open the `extension` folder in VS Code and press <kbd>F5</kbd>. This launches an Extension Development Host. In that window, open one of `../examples/*.linq.csx` and run it.
+Open the `extension` folder in VS Code and press <kbd>F5</kbd>. This launches an Extension Development Host. In that window, open one of `../examples/*.linq` and run it.
 
 By default, the development extension looks for the runner at:
 

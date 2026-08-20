@@ -29,7 +29,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.commands.registerCommand('linqRunner.selectProfile', () => selectProfile()),
         vscode.commands.registerCommand('linqRunner.configure', () =>
             ConfigPanel.show(context, profiles, () => updateStatusBar())),
-        vscode.commands.registerCommand('linqRunner.openGlobalProfiles', () => openGlobalProfiles()),
+        vscode.commands.registerCommand('linqRunner.openGlobalProfiles', () =>
+            ConfigPanel.show(context, profiles, () => updateStatusBar())),
     );
 }
 
@@ -64,8 +65,6 @@ async function selectProfile(): Promise<void> {
         updateStatusBar();
     }
 }
-
-
 function getClient(context: vscode.ExtensionContext): RunnerClient {
     if (client) {
         return client;
@@ -162,8 +161,3 @@ async function restartRunner(): Promise<void> {
     await client.restart();
     vscode.window.showInformationMessage('Another LINQ Tool: runner restarted.');
 }
-
-async function openGlobalProfiles(): Promise<void> {
-    await vscode.commands.executeCommand('workbench.action.openSettings', '@ext:poc.linq-runner-poc');
-}
-
