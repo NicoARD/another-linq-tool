@@ -5,6 +5,7 @@
   "icon": "./icon.png",
   "version": "0.0.1",
   "publisher": "poc",
+  "license": "CC-BY-NC-4.0",
   "private": true,
   "engines": {
     "vscode": "^1.85.0"

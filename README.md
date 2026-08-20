@@ -1,75 +1,70 @@
-# LINQ Runner — POC
+# Another LINQ Tool
 
-A proof of concept for a **C# script runner in VS Code**. Open a `.linq.csx`
-file, press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, and the whole file is executed as a C# script by a
-.NET runner process. The value of the final expression is shown in a result panel.
+Another LINQ Tool is a VS Code extension and .NET runner for executing C# LINQ scripts. Open a `.linq.csx` or `.csx` file, run it with <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, and inspect the final value (and any `Dump()` calls) in VS Code.
 
-> Phase‑1 POC scope: **C# script execution only — no database / EF Core yet.** See
-> `../docs/architecture.md` for the full product design and later milestones.
+It is currently a proof of concept. It supports ordinary C# scripts, external assemblies and imports, NuGet packages, and opt-in EF Core `DbContext` profiles.
 
-## Layout
+## Quick start
 
-```
-linq-runner-poc/
-├── runner/LinqRunner/     # .NET 9 console app: Roslyn scripting + JSON-RPC over stdio
-├── extension/             # VS Code extension (TypeScript): commands + result webview
-└── examples/              # sample .linq.csx scripts
-```
+You need:
 
-The extension is a thin client; all Roslyn/execution logic lives in the runner. They talk
-**JSON-RPC over stdio** (`StreamJsonRpc` ⇄ `vscode-jsonrpc`).
+- .NET SDK 9.0 or newer
+- Node.js 18 or newer
+- Visual Studio Code 1.85 or newer
 
-## Prerequisites
-
-- .NET SDK 9.0+
-- Node.js 18+
-- VS Code 1.85+
-
-## Build & run
-
-1. **Build the runner:**
-   ```powershell
-   cd runner/LinqRunner
-   dotnet build
-   ```
-2. **Build the extension:**
-   ```powershell
-   cd extension
-   npm install
-   npm run compile
-   ```
-3. **Launch:** open the `extension/` folder in VS Code and press <kbd>F5</kbd> (Run Extension).
-4. In the extension host window, open `examples/hello.linq.csx` and press
-   <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (or run **LINQ: Run Current File**).
-
-## Try the runner without VS Code
-
-The runner has a CLI verb for headless testing:
+From this directory, build the runner and extension:
 
 ```powershell
-cd runner/LinqRunner
-dotnet run -- execute ../../examples/hello.linq.csx
+dotnet build runner/LinqRunner
+cd extension
+npm install
+npm run compile
 ```
 
-It prints the serialized result as JSON.
+For local development, open the `extension` folder in VS Code and press <kbd>F5</kbd>. In the Extension Development Host window, open a script in `../examples`, then press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or run **Another LINQ Tool: Run Current File**.
 
-## Commands
+The complete extension setup, usage, profiles, and settings guide is in [extension/README.md](extension/README.md).
 
-| Command | Default key | Description |
-|---|---|---|
-| `LINQ: Run Current File` | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> | Execute the active editor's contents |
-| `LINQ: Restart Runner` | — | Kill and restart the runner process |
+## Repository layout
 
-## Settings
+```text
+runner/LinqRunner/  .NET 9 runner: Roslyn execution and JSON-RPC server
+extension/          VS Code extension: UI, profiles, and result display
+fixtures/TestModel/ Example model assembly used by the sample profiles
+examples/           Sample C# query scripts
+```
 
-| Setting | Default | Description |
-|---|---|---|
-| `linqRunner.dotnetPath` | `dotnet` | dotnet executable used to launch the runner |
-| `linqRunner.runnerPath` | *(empty)* | Absolute path to `LinqRunner.dll`; empty = bundled `../runner` build |
-| `linqRunner.rowLimit` | `1000` | Max rows materialized from a sequence result |
+The extension starts the runner and communicates with it through JSON-RPC over standard input/output. Script execution happens in the runner process.
 
-## Notes / not yet implemented
+## Running without VS Code
 
-- No database, EF Core, assembly references, or NuGet yet (later milestones).
-- Result inspection is intentionally shallow (sequences → tables, objects → one level).
-- Executing scripts runs arbitrary C# — **treat query files as executable code.**
+Run a script directly through the runner:
+
+```powershell
+dotnet run --project runner/LinqRunner -- execute examples/hello.linq.csx
+```
+
+The runner writes the serialized result to standard output. This is useful for checking runner behavior independently of VS Code.
+
+## Samples
+
+- `examples/hello.linq.csx` — basic LINQ query
+- `examples/dump.linq.csx` — inline `Dump()` output
+- `examples/using-dll.linq.csx` — types from an external assembly
+- `examples/db-query.linq.csx` — EF Core profile and SQLite database
+
+To use the assembly or database samples, first build the fixture:
+
+```powershell
+dotnet build fixtures/TestModel
+```
+
+Then create the equivalent profile through **Another LINQ Tool: Configure Profiles**. `linqrunner.json` remains only as a legacy import format; its profiles are migrated to VS Code user settings on first activation.
+
+## Security
+
+Scripts are arbitrary C# code and run with your user permissions. Only run scripts and load assemblies or packages you trust. Connection strings entered through the profile editor are stored in VS Code Secret Storage, not in the settings JSON.
+
+## License
+
+This project is licensed under [CC BY-NC 4.0](LICENSE). You may use, copy, modify, and fork it for non-commercial purposes, with attribution. Commercial use, sale, and monetization are not permitted.
