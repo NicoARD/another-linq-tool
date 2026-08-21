@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "LINQ C# Script",
+  "scopeName": "source.linq-csx",
+  "patterns": [
+    {
+      "match": "^(\\s*)(@profile)([ \\t]+)([^\\r\\n]+)$",
+      "captures": {
+        "2": {
+          "name": "keyword.control.directive.linq-csx"
+        },
+        "4": {
+          "name": "string.unquoted.profile-name.linq-csx"
+        }
+      }
+    },
+    {
+      "include": "source.cs"
+    }
+  ]
+}
