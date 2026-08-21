@@ -46,12 +46,31 @@ export interface ExecuteResult {
     error?: ErrorInfo;
     output?: string;
     outputTruncated?: boolean;
+    sqlCommands?: SqlCommandInfo[];
     elapsedMs: number;
 }
 
 export interface DumpNode {
     label?: string;
     value: ResultNode;
+    sqlCommands?: SqlCommandInfo[];
+}
+
+export interface SqlCommandInfo {
+    order: number;
+    text: string;
+    commandType: string;
+    parameters?: SqlParameterInfo[];
+    elapsedMs?: number;
+    succeeded?: boolean;
+    error?: string;
+}
+
+export interface SqlParameterInfo {
+    name: string;
+    value?: string;
+    dbType?: string;
+    direction?: string;
 }
 
 export interface DbOptions {

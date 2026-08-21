@@ -11,6 +11,8 @@ public sealed class ExecuteResult
     public ErrorInfo? Error { get; set; }
     public string? Output { get; set; }
     public bool? OutputTruncated { get; set; }
+    /// <summary>Database commands executed while producing the final result or an unscoped script operation.</summary>
+    public List<SqlCommandInfo>? SqlCommands { get; set; }
     public long ElapsedMs { get; set; }
 }
 
@@ -18,6 +20,28 @@ public sealed class DumpNode
 {
     public string? Label { get; set; }
     public ResultNode Value { get; set; } = new();
+    /// <summary>Database commands executed while materializing this dumped value.</summary>
+    public List<SqlCommandInfo>? SqlCommands { get; set; }
+}
+
+/// <summary>A database command observed from EF Core's command diagnostics lifecycle.</summary>
+public sealed class SqlCommandInfo
+{
+    public int Order { get; set; }
+    public string Text { get; set; } = "";
+    public string CommandType { get; set; } = "Text";
+    public List<SqlParameterInfo>? Parameters { get; set; }
+    public long? ElapsedMs { get; set; }
+    public bool? Succeeded { get; set; }
+    public string? Error { get; set; }
+}
+
+public sealed class SqlParameterInfo
+{
+    public string Name { get; set; } = "";
+    public string? Value { get; set; }
+    public string? DbType { get; set; }
+    public string? Direction { get; set; }
 }
 
 public sealed class DiagnosticInfo

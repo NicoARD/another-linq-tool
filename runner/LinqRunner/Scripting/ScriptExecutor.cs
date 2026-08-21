@@ -78,6 +78,9 @@ public static class ScriptExecutor
             assemblyLoader.RegisterDependency(assembly);
         }
 
+        // Start before context construction as a custom factory may issue EF commands itself.
+        using var sqlCapture = new EfCoreCommandCapture();
+
         // Build the user's DbContext (if configured) and expose it to the script as the `Db` global.
         object? dbContext = null;
         Type? globalsType = null;
@@ -139,7 +142,7 @@ public static class ScriptExecutor
         // The script's Console output is captured so it (a) never corrupts the stdio RPC channel
         // and (b) can be shown alongside the result. Console.Out/Error are process-global, hence the gate.
         var captured = new BoundedTextWriter(OutputLimit);
-        var sink = new DumpSink(rowLimit);
+        var sink = new DumpSink(rowLimit, sqlCapture);
         var originalOut = Console.Out;
         var originalError = Console.Error;
         await ExecutionGate.WaitAsync(cancellationToken);
@@ -153,20 +156,24 @@ public static class ScriptExecutor
 
             if (state.Exception is not null)
             {
-                return Attach(RuntimeError(state.Exception, stopwatch, diagnostics), captured, sink);
+                return Attach(RuntimeError(state.Exception, stopwatch, diagnostics), captured, sink, sqlCapture);
             }
 
+            var finalResultScope = sqlCapture.BeginScope();
+            var serializedReturnValue = ResultSerializer.Serialize(state.ReturnValue, rowLimit);
+            var finalSqlCommands = sqlCapture.CompleteScope(finalResultScope);
             return Attach(new ExecuteResult
             {
                 Status = "success",
-                Value = ResultSerializer.Serialize(state.ReturnValue, rowLimit),
+                Value = serializedReturnValue,
                 Diagnostics = Map(diagnostics, warningsOnly: true),
+                SqlCommands = finalSqlCommands.Count > 0 ? finalSqlCommands.ToList() : null,
                 ElapsedMs = stopwatch.ElapsedMilliseconds,
-            }, captured, sink);
+            }, captured, sink, sqlCapture);
         }
         catch (OperationCanceledException)
         {
-            return Attach(new ExecuteResult { Status = "cancelled", ElapsedMs = stopwatch.ElapsedMilliseconds }, captured, sink);
+            return Attach(new ExecuteResult { Status = "cancelled", ElapsedMs = stopwatch.ElapsedMilliseconds }, captured, sink, sqlCapture);
         }
         catch (CompilationErrorException ex)
         {
@@ -179,7 +186,7 @@ public static class ScriptExecutor
         }
         catch (Exception ex)
         {
-            return Attach(RuntimeError(ex, stopwatch), captured, sink);
+            return Attach(RuntimeError(ex, stopwatch), captured, sink, sqlCapture);
         }
         finally
         {
@@ -205,7 +212,7 @@ public static class ScriptExecutor
         }
     }
 
-    private static ExecuteResult Attach(ExecuteResult result, BoundedTextWriter captured, DumpSink sink)
+    private static ExecuteResult Attach(ExecuteResult result, BoundedTextWriter captured, DumpSink sink, EfCoreCommandCapture sqlCapture)
     {
         var text = captured.ToString();
         if (text.Length > 0)
@@ -217,6 +224,13 @@ public static class ScriptExecutor
         if (sink.Items.Count > 0)
         {
             result.Dumps = sink.Items.ToList();
+        }
+
+        var sqlCommands = sqlCapture.TakeUnassignedCommands();
+        if (sqlCommands.Count > 0)
+        {
+            result.SqlCommands ??= [];
+            result.SqlCommands.AddRange(sqlCommands);
         }
 
         return result;

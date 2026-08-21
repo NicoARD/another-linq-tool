@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ExecuteResult, ResultNode } from './runnerClient';
+import { ExecuteResult, ResultNode, SqlCommandInfo } from './runnerClient';
 
 /** Renders an execution result in a reusable, script-free webview panel. */
 export class ResultPanel {
@@ -49,6 +49,11 @@ function renderHtml(result: ExecuteResult): string {
     .section { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--vscode-descriptionForeground); margin: 4px 0; }
     .console { white-space: pre-wrap; background: var(--vscode-textCodeBlock-background); padding: 8px; border-radius: 4px; font-size: 13px; margin-bottom: 12px; }
     .dump { margin-bottom: 16px; }
+    details.sql { margin-top: 10px; }
+    details.sql summary { cursor: pointer; color: var(--vscode-textLink-foreground); }
+    .sql-command { margin: 10px 0 14px; }
+    .sql-command pre { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--vscode-textCodeBlock-background); padding: 8px; border-radius: 4px; margin: 6px 0; }
+    .sql-parameters { margin: 6px 0; }
 </style>
 </head>
 <body>
@@ -63,13 +68,13 @@ function renderBody(result: ExecuteResult): string {
     const dumps = renderDumps(result);
 
     if (result.status === 'compileError') {
-        return consoleBlock + dumps + renderDiagnostics(result);
+        return consoleBlock + dumps + renderDiagnostics(result) + renderSql(result.sqlCommands);
     }
     if (result.status === 'runtimeError' || result.status === 'infrastructureError') {
-        return consoleBlock + dumps + renderError(result);
+        return consoleBlock + dumps + renderError(result) + renderSql(result.sqlCommands);
     }
     if (result.status === 'cancelled') {
-        return consoleBlock + dumps + `<div class="diag">Execution cancelled.</div>`;
+        return consoleBlock + dumps + `<div class="diag">Execution cancelled.</div>` + renderSql(result.sqlCommands);
     }
 
     const hasDumps = (result.dumps?.length ?? 0) > 0;
@@ -80,16 +85,34 @@ function renderBody(result: ExecuteResult): string {
         value = result.value ? renderNode(result.value) : `<div class="null">no value</div>`;
     }
 
-    return consoleBlock + dumps + value;
+    return consoleBlock + dumps + value + renderSql(result.sqlCommands);
 }
 
 function renderDumps(result: ExecuteResult): string {
     return (result.dumps ?? [])
         .map((d) => {
             const heading = d.label ? `<div class="section">${escape(d.label)}</div>` : '';
-            return `<div class="dump">${heading}${renderNode(d.value)}</div>`;
+            return `<div class="dump">${heading}${renderNode(d.value)}${renderSql(d.sqlCommands)}</div>`;
         })
         .join('');
+}
+
+function renderSql(commands?: SqlCommandInfo[]): string {
+    if (!commands?.length) {
+        return '';
+    }
+
+    const label = commands.length === 1 ? 'SQL' : `SQL (${commands.length} commands)`;
+    const items = commands.map((command) => {
+        const parameters = command.parameters?.length
+            ? `${command.parameters.map((p) => `${p.name} = ${p.value ?? 'NULL'}`).join('\n')}\n\n`
+            : '';
+        const outcome = command.succeeded === false ? `Failed${command.error ? `: ${command.error}` : ''}` : 'Succeeded';
+        const execution = command.elapsedMs === undefined ? outcome : `${outcome} · Execution: ${command.elapsedMs} ms`;
+        return `<div class="sql-command"><pre>${escape(parameters + command.text)}</pre><div class="type">${escape(command.commandType)} · ${escape(execution)}</div></div>`;
+    }).join('');
+
+    return `<details class="sql"><summary>${label}</summary>${items}</details>`;
 }
 
 function renderConsole(output: string, truncated?: boolean): string {
