@@ -24,6 +24,16 @@ names
     .OrderBy(name => name)
 ```
 
+Scripts support `async`/`await`, including asynchronous EF Core operations:
+
+```csharp
+var activeCustomers = await Db.Customers
+    .Where(customer => customer.IsActive)
+    .ToListAsync();
+
+activeCustomers.Dump("active customers");
+```
+
 The script is executed as C# code with your user permissions. Treat scripts, referenced assemblies, and NuGet packages as trusted code only.
 
 ## Running from source
