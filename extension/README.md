@@ -150,7 +150,7 @@ Build the assembly containing the context before running. The extension reports 
 | **Another LINQ Tool: Open Settings** | Open this extension's VS Code settings. |
 
 ## Troubleshooting
-
+- **Running a script reports `Another LINQ Tool: execution failed. Cannot call write after a stream was destroyed`**: Make sure you have the required runtime installed (.NET 9).
 - **Runner not found:** reinstall the extension, or set `linqRunner.runnerPath` to an absolute DLL path.
 - **`dotnet` cannot start:** install .NET 9 SDK or set `linqRunner.dotnetPath` to the appropriate executable.
 - **Missing types or namespaces:** select the correct profile and add the required assembly and import.
