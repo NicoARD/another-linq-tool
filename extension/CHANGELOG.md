@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5
+
+- Added a Cancel button while scripts run, with a forced runner stop fallback for non-cooperative infinite loops.
+
 ## 1.0.4
 
 - Capture SQL commands executed by EF Core and show them in collapsed, expandable sections beneath query results and dumps.

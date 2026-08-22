@@ -1,5 +1,6 @@
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import {
+    CancellationToken,
     createMessageConnection,
     MessageConnection,
     StreamMessageReader,
@@ -104,16 +105,31 @@ export class RunnerClient {
         imports: string[],
         packages: string[],
         db: DbOptions,
+        cancellationToken?: CancellationToken,
     ): Promise<ExecuteResult> {
         await this.ensureStarted();
-        return this.connection!.sendRequest<ExecuteResult>('execute', {
-            source,
-            rowLimit,
-            assemblies,
-            imports,
-            packages,
-            ...db,
+        let forcedStop: NodeJS.Timeout | undefined;
+        const cancellationSubscription = cancellationToken?.onCancellationRequested(() => {
+            // A synchronous infinite loop cannot observe cancellation. Stop the dedicated runner
+            // if it does not respond to the JSON-RPC cancellation request promptly.
+            forcedStop = setTimeout(() => {
+                this.log('Execution did not respond to cancellation; stopping runner.');
+                this.dispose();
+            }, 1000);
         });
+
+        try {
+            return await this.connection!.sendRequest<ExecuteResult>(
+                'execute',
+                { source, rowLimit, assemblies, imports, packages, ...db },
+                cancellationToken,
+            );
+        } finally {
+            cancellationSubscription?.dispose();
+            if (forcedStop) {
+                clearTimeout(forcedStop);
+            }
+        }
     }
 
     async restart(): Promise<void> {

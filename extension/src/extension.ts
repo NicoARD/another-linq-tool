@@ -143,8 +143,8 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
     }
 
     await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: 'Running script…', cancellable: false },
-        async () => {
+        { location: vscode.ProgressLocation.Notification, title: 'Running script…', cancellable: true },
+        async (_progress, cancellationToken) => {
             try {
                 const result = await getClient(context).execute(
                     source,
@@ -159,9 +159,14 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
                         contextFactoryType: profile?.contextFactoryType,
                         contextFactoryMethod: profile?.contextFactoryMethod,
                     },
+                    cancellationToken,
                 );
                 ResultPanel.show(result, title);
             } catch (err) {
+                if (cancellationToken.isCancellationRequested) {
+                    ResultPanel.show({ status: 'cancelled', elapsedMs: 0 }, title);
+                    return;
+                }
                 const message = err instanceof Error ? err.message : String(err);
                 output.appendLine(`Execution failed: ${message}`);
                 vscode.window.showErrorMessage(`Another LINQ Tool: execution failed. ${message}`);
