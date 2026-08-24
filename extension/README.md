@@ -36,6 +36,38 @@ activeCustomers.Dump("active customers");
 
 The script is executed as C# code with your user permissions. Treat scripts, referenced assemblies, and NuGet packages as trusted code only.
 
+### LINQPad query compatibility
+
+LINQPad query headers are supported. `Expression` and `Statements` are intentionally interchangeable in Another LINQ Tool and use the same dynamic execution as ordinary scripts: statements run normally, and a final expression without a semicolon is automatically displayed. You do not need to change the query kind when switching between those two styles. A `Program` query invokes its parameterless `Main` method, including async and value-returning forms.
+
+```csharp
+<Query Kind="Program">
+  <Namespace>System</Namespace>
+  <Namespace>System.Collections.Generic</Namespace>
+  <Namespace>System.Linq</Namespace>
+</Query>
+
+async Task<List<int>> Main()
+{
+    await Task.Delay(10);
+    return Enumerable.Range(1, 5).Where(number => number % 2 == 1).ToList();
+}
+```
+
+Each `<Namespace>` is imported for that script. The equivalent native directives are `@kind` (or `@query`) and repeatable `@namespace` lines:
+
+```csharp
+@kind Program
+@namespace System.Linq
+
+void Main()
+{
+    Enumerable.Range(1, 3).Dump();
+}
+```
+
+Supported kinds are `Program`, `Expression`, and `Statements`. These directives may be combined with `@profile`.
+
 ## Running from source
 
 This repository keeps the extension and runner side by side. From the repository root:
@@ -47,6 +79,8 @@ npm run release:check
 ```
 
 Open the `extension` folder in VS Code and press <kbd>F5</kbd>. This launches an Extension Development Host. In that window, open one of `../examples/*.linq` and run it.
+
+On Windows, `..\build.bat` publishes all self-contained .NET 11 runners and compiles the extension. It includes runner changes such as LINQPad query headers, per-script namespaces, and Program `Main` invocation.
 
 The release build publishes the runner into the extension at:
 
@@ -79,7 +113,7 @@ Connection strings saved through the editor are held in VS Code Secret Storage. 
 
 Each run uses the **active** profile shown in the status bar (change it with **Another LINQ Tool: Select Profile**). If no profile has been selected, the `linqRunner.defaultProfile` is used.
 
-To override the profile for a single script, add a `@profile` directive as the first line, naming the profile to use:
+To override the profile for a single script, add a `@profile` directive in its metadata block, naming the profile to use:
 
 ```csharp
 @profile testmodel

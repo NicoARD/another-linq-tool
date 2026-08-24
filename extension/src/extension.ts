@@ -93,13 +93,44 @@ function getClient(context: vscode.ExtensionContext): RunnerClient {
     return client;
 }
 
-/** Reads an optional `@profile <name>` directive from the first line and returns the remaining script body. */
+/** Reads an optional `@profile <name>` directive and masks its text so diagnostics retain their line numbers. */
 function parseProfileDirective(text: string): { profileName?: string; body: string } {
-    const match = /^\s*(?:\/\/\s*)?@profile[ \t]+(.+?)[ \t]*(\r?\n|$)/.exec(text);
-    if (!match) {
-        return { body: text };
+    let inQueryHeader = false;
+    let offset = 0;
+
+    for (const lineMatch of text.matchAll(/[^\r\n]*(?:\r\n|\n|$)/g)) {
+        const rawLine = lineMatch[0];
+        const line = rawLine.replace(/\r?\n$/, '');
+        const trimmed = line.trim().replace(/^\uFEFF/, '');
+
+        if (inQueryHeader) {
+            inQueryHeader = !/<\/Query\s*>/i.test(trimmed);
+        } else if (!trimmed) {
+            // Blank lines are allowed within the metadata block.
+        } else if (/^<Query\b/i.test(trimmed)) {
+            inQueryHeader = !/<\/Query\s*>/i.test(trimmed);
+        } else {
+            const directive = /^(?:\/\/[ \t]*)?@(profile|kind|query|namespace)[ \t]+(.+?)[ \t]*$/i.exec(trimmed);
+            if (!directive) {
+                break;
+            }
+
+            if (directive[1].toLowerCase() === 'profile') {
+                const masked = line.replace(/[^\r\n]/g, ' ');
+                return {
+                    profileName: directive[2].trim(),
+                    body: text.slice(0, offset) + masked + text.slice(offset + line.length),
+                };
+            }
+        }
+
+        offset += rawLine.length;
+        if (rawLine.length === 0) {
+            break;
+        }
     }
-    return { profileName: match[1].trim(), body: text.slice(match[0].length) };
+
+    return { body: text };
 }
 
 interface RunnerLaunch {

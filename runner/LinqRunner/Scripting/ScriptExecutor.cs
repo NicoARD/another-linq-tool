@@ -42,6 +42,20 @@ public static class ScriptExecutor
     {
         var stopwatch = Stopwatch.StartNew();
 
+        ScriptDocument document;
+        try
+        {
+            document = ScriptDocument.Parse(source);
+        }
+        catch (Exception ex)
+        {
+            return InfrastructureError($"Invalid script metadata: {ex.Message}", ex, stopwatch);
+        }
+
+        source = document.Kind == ScriptKind.Program
+            ? $"{document.Source}\n\nawait ProgramEntryPoint.InvokeAsync(Main)"
+            : document.Source;
+
         // Restore any profile NuGet packages and add the resolved DLLs to the assembly set so the loader
         // references and loads them (and their deps) exactly like application assemblies.
         var effectiveAssemblies = assemblies;
@@ -85,7 +99,10 @@ public static class ScriptExecutor
         object? dbContext = null;
         Type? globalsType = null;
         object? globals = null;
-        var effectiveImports = imports;
+        IReadOnlyList<string> effectiveImports = imports
+            .Concat(document.Namespaces)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
 
         if (dbRequest.IsConfigured)
         {

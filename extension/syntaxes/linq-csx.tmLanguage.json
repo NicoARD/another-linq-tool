@@ -4,13 +4,16 @@
   "scopeName": "source.linq-csx",
   "patterns": [
     {
-      "match": "^(\\s*)(@profile)([ \\t]+)([^\\r\\n]+)$",
+      "match": "^(\\s*)(?:(//)[ \\t]*)?(@(profile|kind|query|namespace))([ \\t]+)([^\\r\\n]+)$",
       "captures": {
         "2": {
+          "name": "punctuation.definition.comment.linq-csx"
+        },
+        "3": {
           "name": "keyword.control.directive.linq-csx"
         },
-        "4": {
-          "name": "string.unquoted.profile-name.linq-csx"
+        "6": {
+          "name": "string.unquoted.directive-value.linq-csx"
         }
       }
     },

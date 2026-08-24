@@ -4,7 +4,9 @@ Another LINQ Tool is a VS Code extension and .NET runner for executing C# LINQ s
 
 The packaged extension includes self-contained runners for supported Windows, Linux, and macOS systems, so extension users do not need to install .NET.
 
-It supports ordinary C# scripts, external assemblies and imports, NuGet packages, and opt-in EF Core `DbContext` profiles.
+It supports ordinary C# scripts, LINQPad-style Expression, Statements, and Program queries, external assemblies and imports, NuGet packages, and opt-in EF Core `DbContext` profiles.
+
+LINQPad `Expression` and `Statements` query kinds are interchangeable in Another LINQ Tool. Both are executed dynamically: statements run normally, and a final expression without a semicolon is automatically displayed.
 
 ## Quick start
 
@@ -21,6 +23,8 @@ cd extension
 npm install
 npm run release:check
 ```
+
+On Windows, run `build.bat` from the repository root to publish the self-contained .NET 11 runners and compile the extension without creating a VSIX. Install the extension dependencies first with `npm install` in the `extension` directory.
 
 `release:check` publishes the .NET runner into the extension, compiles TypeScript, and creates a `.vsix` package. Install that VSIX in a clean VS Code profile to validate the release artifact. For local development, open the `extension` folder in VS Code and press <kbd>F5</kbd>. In the Extension Development Host window, open a script in `../examples`, then press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or run **Another LINQ Tool: Run Current File**.
 
@@ -51,6 +55,10 @@ The runner writes the serialized result to standard output. This is useful for c
 
 - `examples/hello.linq` — basic LINQ query
 - `examples/dump.linq` — inline `Dump()` output
+- `examples/linqpad-expression.linq` — LINQPad Expression query header
+- `examples/linqpad-statements.linq` — LINQPad Statements query with a final value
+- `examples/linqpad-program.linq` — LINQPad Program query with async `Main`
+- `examples/program-directives.linq` — `@kind` and `@namespace` Program query
 - `examples/using-dll.linq` — types from an external assembly
 - `examples/db-query.linq` — EF Core profile and SQLite database
 
