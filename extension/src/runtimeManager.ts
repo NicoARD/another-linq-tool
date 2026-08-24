@@ -21,7 +21,10 @@ type DotnetPathResult = string | DotnetAcquireResult | undefined;
 const targetFrameworkMarker = Buffer.from('.NETCoreApp,Version=v', 'ascii');
 
 /** Selects the newest runner required by the profile's managed assembly references. */
-export function selectRunnerFramework(assemblies: readonly string[]): RunnerFramework {
+export function selectRunnerFramework(
+    assemblies: readonly string[],
+    requested?: RunnerFramework | 'auto',
+): RunnerFramework {
     let highestMajor = 10;
     for (const assembly of assemblies) {
         const major = readTargetFrameworkMajor(assembly);
@@ -34,6 +37,15 @@ export function selectRunnerFramework(assemblies: readonly string[]): RunnerFram
         throw new Error(
             `A configured assembly targets .NET ${highestMajor}, but this version supports assemblies through .NET 11.`,
         );
+    }
+
+    if (requested && requested !== 'auto') {
+        if (requested === 'net10.0' && highestMajor > 10) {
+            throw new Error(
+                'The active profile selects .NET 10, but one of its configured assemblies targets .NET 11.',
+            );
+        }
+        return requested;
     }
 
     return highestMajor === 11 ? 'net11.0' : 'net10.0';

@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { ProfileManager, ProfilesConfigFile } from './profiles';
 
-/** A webview form for editing global User Settings profiles (assemblies, imports, database/context). */
+/** A webview form for editing global User Settings profiles (runtime, assemblies, imports, database/context). */
 export class ConfigPanel {
     private static panel: vscode.WebviewPanel | undefined;
 
@@ -180,6 +180,12 @@ function render() {
 
     editor.innerHTML =
         '<label>Name</label><input type="text" id="profileName" value="' + escapeAttr(selected) + '" />' +
+        '<label>.NET runtime</label><select id="targetFramework">' +
+            '<option value="auto"' + (!p.targetFramework ? ' selected' : '') + '>Automatic (based on assemblies)</option>' +
+            '<option value="net10.0"' + (p.targetFramework === 'net10.0' ? ' selected' : '') + '>.NET 10 LTS</option>' +
+            '<option value="net11.0"' + (p.targetFramework === 'net11.0' ? ' selected' : '') + '>.NET 11 (Preview)</option>' +
+        '</select>' +
+        '<div class="muted">Automatic uses .NET 11 when a configured assembly targets net11.0; otherwise it uses .NET 10.</div>' +
         '<fieldset><legend>Assemblies (DLLs)</legend>' + asmRows +
             '<div class="row"><button class="secondary" id="addAssembly">Add DLL…</button></div>' +
             '<div class="muted">Point at your application\\'s build output so EF Core and native deps are alongside the DLL.</div>' +
@@ -234,6 +240,10 @@ function wireEditor() {
     bind('imports', v => p.imports = v.split('\\n').map(s => s.trim()).filter(Boolean));
     bind('packages', v => p.packages = v.split('\\n').map(s => s.trim()).filter(Boolean));
     bind('prelude', v => p.prelude = v || undefined);
+    const targetFramework = document.getElementById('targetFramework');
+    if (targetFramework) targetFramework.onchange = e => {
+        p.targetFramework = e.target.value === 'auto' ? undefined : e.target.value;
+    };
     bind('context', v => p.context = v || undefined);
     bind('connectionString', v => p.connectionString = v || undefined);
     const toggleConnectionString = document.getElementById('toggleConnectionString');

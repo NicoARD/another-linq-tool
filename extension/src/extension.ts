@@ -81,13 +81,21 @@ async function selectProfile(): Promise<void> {
         updateStatusBar();
     }
 }
-async function getClient(context: vscode.ExtensionContext, assemblies: readonly string[]): Promise<RunnerClient> {
+async function getClient(
+    context: vscode.ExtensionContext,
+    assemblies: readonly string[],
+    targetFramework?: 'net10.0' | 'net11.0',
+): Promise<RunnerClient> {
     const config = vscode.workspace.getConfiguration('linqRunner');
     const dotnetPath = config.get<string>('dotnetPath', 'dotnet');
     const configuredRunner = config.get<string>('runnerPath', '');
     const launch = configuredRunner
         ? resolveCustomRunnerLaunch(configuredRunner, dotnetPath)
-        : await resolveManagedRunner(context, selectRunnerFramework(assemblies), (message) => output.appendLine(message));
+        : await resolveManagedRunner(
+            context,
+            selectRunnerFramework(assemblies, targetFramework),
+            (message) => output.appendLine(message),
+        );
     const launchKey = JSON.stringify([launch.executable, ...launch.args]);
     if (client && clientLaunchKey === launchKey) {
         return client;
@@ -197,7 +205,11 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
         { location: vscode.ProgressLocation.Notification, title: 'Running script…', cancellable: true },
         async (_progress, cancellationToken) => {
             try {
-                const runnerClient = await getClient(context, profile?.assemblies ?? []);
+                const runnerClient = await getClient(
+                    context,
+                    profile?.assemblies ?? [],
+                    profile?.targetFramework,
+                );
                 const result = await runnerClient.execute(
                     source,
                     rowLimit,

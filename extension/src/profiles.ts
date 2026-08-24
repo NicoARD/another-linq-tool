@@ -10,8 +10,10 @@ const ACTIVE_PROFILE_KEY = 'activeProfile';
 const CONNECTION_SECRET_PREFIX = 'profileConnectionString:';
 
 export type AssemblyEntry = string | { path: string; enabled?: boolean };
+export type ProfileTargetFramework = 'net10.0' | 'net11.0';
 
 export interface ProfileEntry {
+    targetFramework?: ProfileTargetFramework;
     assemblies?: AssemblyEntry[];
     imports?: string[];
     packages?: string[];
@@ -36,6 +38,7 @@ export function normalizeAssembly(entry: AssemblyEntry): { path: string; enabled
 
 export interface ResolvedProfile {
     name: string;
+    targetFramework?: ProfileTargetFramework;
     assemblies: string[];
     imports: string[];
     packages: string[];
@@ -139,6 +142,7 @@ export class ProfileManager {
         const dbEnabled = raw.dbEnabled !== false;
         return {
             name,
+            targetFramework: raw.targetFramework,
             assemblies,
             imports: raw.imports ?? [],
             packages: raw.packages ?? [],

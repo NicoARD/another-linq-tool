@@ -116,6 +116,8 @@ Profiles group the assemblies, namespaces, NuGet packages, and optional database
 
 The profile editor can import and export JSON profile files. Exported files may include connection strings; store them securely and do not commit them.
 
+Each profile has a **.NET runtime** selector. **Automatic** uses .NET 10 unless a configured assembly targets `net11.0`; choose **.NET 11** explicitly for scripts or packages that need .NET 11 even when no referenced DLL exposes that requirement. Choosing .NET 10 for a profile containing a `net11.0` assembly produces a compatibility error instead of starting an incompatible runner.
+
 Connection strings saved through the editor are held in VS Code Secret Storage. Profile names and other non-secret values are stored in the global `linqRunner.*` user settings.
 
 ### Choosing the profile per script
@@ -160,6 +162,7 @@ Example non-secret profile settings:
   "linqRunner.defaultProfile": "testmodel",
   "linqRunner.profiles": {
     "testmodel": {
+      "targetFramework": "net10.0",
       "assemblies": [
         "C:\\code\\projects\\TestModel\\bin\\Debug\\net9.0\\TestModel.dll"
       ],
