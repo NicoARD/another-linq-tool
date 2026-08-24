@@ -16,6 +16,8 @@ The extension includes a self-contained .NET runner. Installed users do not need
 
 Nested objects and collections in results and `Dump()` output are expandable. Use the disclosure arrows, or focus them and press <kbd>Enter</kbd> or <kbd>Space</kbd>, to navigate into lists and object properties.
 
+In the result preview, hold <kbd>Ctrl</kbd> and scroll to zoom in or out. Drag a column header's right edge to resize it, use <kbd>Left</kbd>/<kbd>Right</kbd> while the resize handle is focused, or double-click the handle to restore automatic sizing.
+
 For example:
 
 ```csharp

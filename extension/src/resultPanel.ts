@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
+import { randomBytes } from 'crypto';
 import { ExecuteResult, ResultNode, SqlCommandInfo } from './runnerClient';
 
-/** Renders an execution result in a reusable, script-free webview panel. */
+/** Renders an execution result in a reusable webview panel. */
 export class ResultPanel {
     private static panel: vscode.WebviewPanel | undefined;
 
@@ -11,7 +12,7 @@ export class ResultPanel {
                 'linqRunnerResult',
                 'Another LINQ Tool Result',
                 { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
-                { enableScripts: false, retainContextWhenHidden: true },
+                { enableScripts: true, retainContextWhenHidden: true },
             );
             this.panel.onDidDispose(() => (this.panel = undefined));
         }
@@ -24,26 +25,29 @@ export class ResultPanel {
 
 function renderHtml(result: ExecuteResult): string {
     const body = renderBody(result);
+    const nonce = getNonce();
     const meta = `<div class="meta">${escape(result.status)} · ${result.elapsedMs} ms</div>`;
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';" />
 <style>
     body { font-family: var(--vscode-editor-font-family, monospace); color: var(--vscode-foreground); padding: 12px; }
     .meta { color: var(--vscode-descriptionForeground); font-size: 12px; margin-bottom: 12px; }
     table { border-collapse: collapse; width: 100%; }
     th, td { border: 1px solid var(--vscode-panel-border, #444); padding: 4px 8px; text-align: left; vertical-align: top; font-size: 13px; }
     th { background: var(--vscode-editorWidget-background); position: sticky; top: 0; }
+    th.resizable { padding-right: 13px; }
+    .column-resizer { position: absolute; top: 0; right: -3px; width: 7px; height: 100%; cursor: col-resize; touch-action: none; z-index: 2; }
+    .column-resizer:hover, .column-resizer:focus { background: var(--vscode-focusBorder); outline: none; }
     tr:nth-child(even) td { background: var(--vscode-list-hoverBackground); }
     .scalar { font-size: 15px; padding: 8px 0; }
     .kv td:first-child { color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe); white-space: nowrap; }
     details.nested > summary { cursor: pointer; color: var(--vscode-textLink-foreground); white-space: nowrap; }
     details.nested[open] > summary { margin-bottom: 6px; }
     details.nested table { margin: 4px 0; }
-    .cell-type { color: var(--vscode-descriptionForeground); font-size: 10px; margin-left: 4px; }
     .type { color: var(--vscode-descriptionForeground); font-size: 11px; }
     .error { color: var(--vscode-errorForeground); }
     .error pre { white-space: pre-wrap; background: var(--vscode-textCodeBlock-background); padding: 8px; border-radius: 4px; }
@@ -63,8 +67,112 @@ function renderHtml(result: ExecuteResult): string {
 <body>
 ${meta}
 ${body}
+<script nonce="${nonce}">
+(() => {
+    const vscode = acquireVsCodeApi();
+    const minimumZoom = 0.5;
+    const maximumZoom = 3;
+    const zoomStep = 0.1;
+    let zoom = Number(vscode.getState()?.zoom) || 1;
+
+    function applyZoom(nextZoom) {
+        zoom = Math.min(maximumZoom, Math.max(minimumZoom, Math.round(nextZoom * 10) / 10));
+        document.body.style.zoom = String(zoom);
+        vscode.setState({ zoom });
+    }
+
+    applyZoom(zoom);
+    window.addEventListener('wheel', (event) => {
+        if (!event.ctrlKey) return;
+        event.preventDefault();
+        applyZoom(zoom + (event.deltaY < 0 ? zoomStep : -zoomStep));
+    }, { passive: false, capture: true });
+
+    window.addEventListener('keydown', (event) => {
+        if (!event.ctrlKey) return;
+        if (event.key === '0') {
+            event.preventDefault();
+            applyZoom(1);
+        } else if (event.key === '+' || event.key === '=') {
+            event.preventDefault();
+            applyZoom(zoom + zoomStep);
+        } else if (event.key === '-') {
+            event.preventDefault();
+            applyZoom(zoom - zoomStep);
+        }
+    });
+
+    function sizeColumns(table, headers) {
+        const tableWidth = table.getBoundingClientRect().width;
+        const widths = headers.map((header) => header.getBoundingClientRect().width);
+        table.style.tableLayout = 'fixed';
+        table.style.width = Math.round(tableWidth) + 'px';
+        headers.forEach((header, index) => {
+            header.style.width = Math.round(widths[index]) + 'px';
+        });
+        return { tableWidth, widths };
+    }
+
+    document.querySelectorAll('table').forEach((table) => {
+        const headers = Array.from(table.tHead?.rows[0]?.cells ?? []);
+        headers.forEach((header, columnIndex) => {
+            header.classList.add('resizable');
+            const handle = document.createElement('span');
+            handle.className = 'column-resizer';
+            handle.tabIndex = 0;
+            handle.setAttribute('role', 'separator');
+            handle.setAttribute('aria-orientation', 'vertical');
+            handle.setAttribute('aria-label', 'Resize ' + (header.textContent || 'column') + ' column');
+            header.appendChild(handle);
+
+            let resizeState;
+            handle.addEventListener('pointerdown', (event) => {
+                event.preventDefault();
+                const sizing = sizeColumns(table, headers);
+                resizeState = {
+                    pointerId: event.pointerId,
+                    startX: event.clientX,
+                    startWidth: sizing.widths[columnIndex],
+                    startTableWidth: sizing.tableWidth,
+                };
+                handle.setPointerCapture(event.pointerId);
+            });
+            handle.addEventListener('pointermove', (event) => {
+                if (!resizeState || resizeState.pointerId !== event.pointerId) return;
+                const delta = event.clientX - resizeState.startX;
+                const width = Math.max(48, resizeState.startWidth + delta);
+                const appliedDelta = width - resizeState.startWidth;
+                header.style.width = Math.round(width) + 'px';
+                table.style.width = Math.round(resizeState.startTableWidth + appliedDelta) + 'px';
+            });
+            handle.addEventListener('pointerup', (event) => {
+                if (resizeState?.pointerId === event.pointerId) resizeState = undefined;
+            });
+            handle.addEventListener('keydown', (event) => {
+                if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                event.preventDefault();
+                const sizing = sizeColumns(table, headers);
+                const delta = event.key === 'ArrowRight' ? 12 : -12;
+                const width = Math.max(48, sizing.widths[columnIndex] + delta);
+                const appliedDelta = width - sizing.widths[columnIndex];
+                header.style.width = Math.round(width) + 'px';
+                table.style.width = Math.round(sizing.tableWidth + appliedDelta) + 'px';
+            });
+            handle.addEventListener('dblclick', () => {
+                table.style.removeProperty('table-layout');
+                table.style.removeProperty('width');
+                headers.forEach((item) => item.style.removeProperty('width'));
+            });
+        });
+    });
+})();
+</script>
 </body>
 </html>`;
+}
+
+function getNonce(): string {
+    return randomBytes(16).toString('base64');
 }
 
 function renderBody(result: ExecuteResult): string {
@@ -153,7 +261,10 @@ function renderObject(node: ResultNode): string {
 }
 
 function renderTable(node: ResultNode): string {
-    const head = (node.columns ?? []).map((c) => `<th>${escape(c)}</th>`).join('');
+    const head = (node.columns ?? []).map((column, index) => {
+        const type = node.columnTypes?.[index];
+        return `<th>${escape(column)}${type ? `<div class="type">${escape(type)}</div>` : ''}</th>`;
+    }).join('');
     const rows = (node.rows ?? [])
         .map((row, rowIndex) => `<tr>${row.map((cell, columnIndex) =>
             `<td>${renderCell(node.cells?.[rowIndex]?.[columnIndex], cell)}</td>`).join('')}</tr>`)
@@ -174,7 +285,7 @@ function renderCell(node: ResultNode | undefined, fallback: string | null | unde
         return `<span class="null">null</span>`;
     }
     if (node.kind === 'scalar') {
-        return `<span>${escape(node.text ?? '')}</span><span class="cell-type">${escape(node.typeName ?? '')}</span>`;
+        return `<span>${escape(node.text ?? '')}</span>`;
     }
 
     const summary = node.kind === 'table'

@@ -13,6 +13,7 @@ export interface ResultNode {
     text?: string;
     properties?: PropertyNode[];
     columns?: string[];
+    columnTypes?: string[];
     rows?: (string | null)[][];
     cells?: ResultNode[][];
     rowCount?: number;

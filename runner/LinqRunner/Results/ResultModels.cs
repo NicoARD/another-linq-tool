@@ -76,6 +76,7 @@ public sealed class ResultNode
 
     // table
     public List<string>? Columns { get; set; }
+    public List<string>? ColumnTypes { get; set; }
     public List<List<string?>>? Rows { get; set; }
     /// <summary>Structured counterparts to <see cref="Rows"/> for expandable nested values.</summary>
     public List<List<ResultNode>>? Cells { get; set; }
