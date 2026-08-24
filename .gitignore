@@ -14,3 +14,6 @@ extension/runner/
 
 # Local demo database
 *.sqlite
+
+# Misc
+mcp.json
