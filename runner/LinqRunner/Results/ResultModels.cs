@@ -77,6 +77,8 @@ public sealed class ResultNode
     // table
     public List<string>? Columns { get; set; }
     public List<List<string?>>? Rows { get; set; }
+    /// <summary>Structured counterparts to <see cref="Rows"/> for expandable nested values.</summary>
+    public List<List<ResultNode>>? Cells { get; set; }
     public int? RowCount { get; set; }
     public bool? Truncated { get; set; }
 }
@@ -86,4 +88,6 @@ public sealed class PropertyNode
     public string Name { get; set; } = "";
     public string? TypeName { get; set; }
     public string? Value { get; set; }
+    /// <summary>Structured counterpart to <see cref="Value"/> for expandable nested values.</summary>
+    public ResultNode? Node { get; set; }
 }

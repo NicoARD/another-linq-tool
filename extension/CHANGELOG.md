@@ -4,6 +4,8 @@
 
 - Bundle self-contained .NET 11 runners for Windows, Linux, and macOS on x64 and ARM64, removing the .NET installation requirement for extension users.
 - Support LINQPad query headers and per-script namespaces, plus `@kind`, `@query`, and `@namespace` directives. Program queries invoke parameterless sync or async `Main` methods while Expression and Statements queries retain dynamic final-expression behavior.
+- Make nested objects and collections in results and `Dump()` output expandable and keyboard-navigable.
+- Prefer RID-specific managed package assets when loading user dependencies, preventing unsupported facade assemblies such as the root `Microsoft.Data.SqlClient.dll` from being loaded.
 
 ## 1.0.5
 

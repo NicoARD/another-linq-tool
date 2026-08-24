@@ -8,6 +8,8 @@ It supports ordinary C# scripts, LINQPad-style Expression, Statements, and Progr
 
 LINQPad `Expression` and `Statements` query kinds are interchangeable in Another LINQ Tool. Both are executed dynamically: statements run normally, and a final expression without a semicolon is automatically displayed.
 
+Result values and `Dump()` output retain nested objects and collections. Expand their disclosure arrows in the result panel to navigate into lists and properties.
+
 ## Quick start
 
 You need:

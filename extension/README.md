@@ -14,6 +14,8 @@ The extension includes a self-contained .NET runner. Installed users do not need
 2. Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, select the play button in the editor title bar, or run **Another LINQ Tool: Run Current File** from the Command Palette.
 3. Review the result panel. The final expression is displayed when it has no trailing semicolon; `Dump()` calls display intermediate values.
 
+Nested objects and collections in results and `Dump()` output are expandable. Use the disclosure arrows, or focus them and press <kbd>Enter</kbd> or <kbd>Space</kbd>, to navigate into lists and object properties.
+
 For example:
 
 ```csharp
@@ -186,6 +188,7 @@ Build the assembly containing the context before running. The extension reports 
 ## Troubleshooting
 - **Runner not found:** reinstall the extension, or set `linqRunner.runnerPath` to an absolute runner executable or DLL path.
 - **A custom runner DLL cannot start:** install its required .NET runtime or set `linqRunner.dotnetPath` to the appropriate executable.
+- **`Microsoft.Data.SqlClient is not supported on this platform`:** rebuild the referenced project so its `runtimes` directory and `.deps.json` are present beside the assembly, then restart the runner. The extension selects the matching RID-specific SqlClient implementation rather than its unsupported root facade.
 - **Missing types or namespaces:** select the correct profile and add the required assembly and import.
 - **Missing profile assembly:** build the referenced project and update the assembly path if its output location changed.
 - **A script or package fails:** open the **Another LINQ Tool** output channel for runner diagnostics.

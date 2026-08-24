@@ -5,8 +5,8 @@
 
 var people = new[]
 {
-    new { Name = "Ada",   Age = 36 },
-    new { Name = "Grace", Age = 45 },
+    new { Name = "Ada",   Age = 36, Skills = new List<string> { "Math", "Compilers" } },
+    new { Name = "Grace", Age = 45, Skills = new List<string> { "COBOL", "Leadership" } },
 };
 
 people.Dump("people");

@@ -52,21 +52,20 @@ public static class UserAssemblyLoader
             InstallResolver();
 
             var result = new Result();
-            var fullPaths = assemblyPaths
+            var requestedPaths = assemblyPaths
                 .Select(Path.GetFullPath)
                 .Where(File.Exists)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             // Index sibling directories so transitive dependencies can be probed at runtime.
-            foreach (var directory in fullPaths.Select(Path.GetDirectoryName).Distinct())
+            foreach (var directory in requestedPaths.Select(Path.GetDirectoryName).Distinct())
             {
                 if (directory is null)
                 {
                     continue;
                 }
 
-                ProbeDirectories.Add(directory);
                 ProbeDirectories.Add(directory);
 
                 foreach (var dll in Directory.EnumerateFiles(directory, "*.dll"))
@@ -75,7 +74,15 @@ public static class UserAssemblyLoader
                 }
             }
 
-            foreach (var path in fullPaths)
+            // Package build outputs can contain an unsupported facade in the root and the real
+            // implementation under runtimes/<rid>/lib. Load the implementation explicitly when one
+            // exists; otherwise the facade can win before AssemblyDependencyResolver is consulted.
+            var fullPaths = requestedPaths
+                .Select(SelectRuntimeAsset)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (var path in requestedPaths)
             {
                 if (DepsResolverPaths.Add(path))
                 {
@@ -88,7 +95,10 @@ public static class UserAssemblyLoader
                         // No deps.json beside this assembly; sibling probing still applies.
                     }
                 }
+            }
 
+            foreach (var path in fullPaths)
+            {
                 var bytes = File.ReadAllBytes(path);
 
                 if (!LoadedByPath.TryGetValue(path, out var assembly))
@@ -105,9 +115,14 @@ public static class UserAssemblyLoader
             // provider, other app dependencies) so their types are usable at compile time, not just at
             // runtime. Framework assemblies are excluded to avoid duplicate references.
             var referencedPaths = new HashSet<string>(fullPaths, StringComparer.OrdinalIgnoreCase);
+            var referencedNames = fullPaths
+                .Select(Path.GetFileNameWithoutExtension)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
             foreach (var (name, path) in ProbeRegistry)
             {
-                if (FrameworkReferences.Names.Contains(name) || referencedPaths.Contains(path))
+                if (FrameworkReferences.Names.Contains(name)
+                    || referencedNames.Contains(name)
+                    || referencedPaths.Contains(path))
                 {
                     continue;
                 }
@@ -135,6 +150,7 @@ public static class UserAssemblyLoader
         {
             if (ProbeRegistry.TryGetValue(simpleName, out var path) && File.Exists(path))
             {
+                path = SelectRuntimeAsset(path);
                 if (LoadedByPath.TryGetValue(path, out var existing))
                 {
                     return existing;
@@ -239,6 +255,7 @@ public static class UserAssemblyLoader
                 {
                     try
                     {
+                        path = SelectRuntimeAsset(path);
                         return context.LoadFromStream(new MemoryStream(File.ReadAllBytes(path)));
                     }
                     catch
@@ -297,6 +314,69 @@ public static class UserAssemblyLoader
                 yield return native;
             }
         }
+    }
+
+    private static string SelectRuntimeAsset(string path)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (directory is null)
+        {
+            return path;
+        }
+
+        var fileName = Path.GetFileName(path);
+        foreach (var runtimeName in CompatibleRuntimeNames())
+        {
+            var libDirectory = Path.Combine(directory, "runtimes", runtimeName, "lib");
+            if (!Directory.Exists(libDirectory))
+            {
+                continue;
+            }
+
+            var candidate = Directory.EnumerateFiles(libDirectory, fileName, SearchOption.AllDirectories)
+                .OrderByDescending(RuntimeAssetScore)
+                .FirstOrDefault();
+            if (candidate is not null)
+            {
+                return candidate;
+            }
+        }
+
+        return path;
+    }
+
+    private static IEnumerable<string> CompatibleRuntimeNames()
+    {
+        yield return RuntimeIdentifier();
+
+        if (OperatingSystem.IsWindows())
+        {
+            yield return "win";
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            yield return "osx";
+            yield return "unix";
+        }
+        else
+        {
+            yield return "linux";
+            yield return "unix";
+        }
+    }
+
+    private static int RuntimeAssetScore(string path)
+    {
+        var target = Path.GetFileName(Path.GetDirectoryName(path));
+        if (target?.StartsWith("net", StringComparison.OrdinalIgnoreCase) != true)
+        {
+            return 0;
+        }
+
+        var version = target[3..].Split('-', 2)[0];
+        return Version.TryParse(version, out var parsed) && parsed.Major <= Environment.Version.Major
+            ? parsed.Major * 100 + parsed.Minor
+            : 0;
     }
 
     private static IEnumerable<string> NativeFileNames(string libraryName)

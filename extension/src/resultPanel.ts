@@ -40,6 +40,10 @@ function renderHtml(result: ExecuteResult): string {
     tr:nth-child(even) td { background: var(--vscode-list-hoverBackground); }
     .scalar { font-size: 15px; padding: 8px 0; }
     .kv td:first-child { color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe); white-space: nowrap; }
+    details.nested > summary { cursor: pointer; color: var(--vscode-textLink-foreground); white-space: nowrap; }
+    details.nested[open] > summary { margin-bottom: 6px; }
+    details.nested table { margin: 4px 0; }
+    .cell-type { color: var(--vscode-descriptionForeground); font-size: 10px; margin-left: 4px; }
     .type { color: var(--vscode-descriptionForeground); font-size: 11px; }
     .error { color: var(--vscode-errorForeground); }
     .error pre { white-space: pre-wrap; background: var(--vscode-textCodeBlock-background); padding: 8px; border-radius: 4px; }
@@ -139,8 +143,9 @@ function renderObject(node: ResultNode): string {
     const rows = (node.properties ?? [])
         .map(
             (p) =>
-                `<tr><td>${escape(p.name)}<div class="type">${escape(p.typeName ?? '')}</div></td><td>${escape(
-                    p.value ?? '',
+                `<tr><td>${escape(p.name)}<div class="type">${escape(p.typeName ?? '')}</div></td><td>${renderCell(
+                    p.node,
+                    p.value,
                 )}</td></tr>`,
         )
         .join('');
@@ -150,13 +155,32 @@ function renderObject(node: ResultNode): string {
 function renderTable(node: ResultNode): string {
     const head = (node.columns ?? []).map((c) => `<th>${escape(c)}</th>`).join('');
     const rows = (node.rows ?? [])
-        .map((row) => `<tr>${row.map((cell) => `<td>${escape(cell ?? 'null')}</td>`).join('')}</tr>`)
+        .map((row, rowIndex) => `<tr>${row.map((cell, columnIndex) =>
+            `<td>${renderCell(node.cells?.[rowIndex]?.[columnIndex], cell)}</td>`).join('')}</tr>`)
         .join('');
     const truncated = node.truncated
         ? `<div class="truncated">Results truncated at ${node.rowCount} rows.</div>`
         : '';
     return `<table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>
 <div class="type">${escape(node.typeName ?? '')} · ${node.rowCount ?? 0} row(s)</div>${truncated}`;
+}
+
+function renderCell(node: ResultNode | undefined, fallback: string | null | undefined): string {
+    if (!node) {
+        return escape(fallback ?? 'null');
+    }
+
+    if (node.kind === 'null') {
+        return `<span class="null">null</span>`;
+    }
+    if (node.kind === 'scalar') {
+        return `<span>${escape(node.text ?? '')}</span><span class="cell-type">${escape(node.typeName ?? '')}</span>`;
+    }
+
+    const summary = node.kind === 'table'
+        ? `[${node.rowCount ?? 0} item(s)]`
+        : `{ ${node.typeName ?? 'object'} }`;
+    return `<details class="nested"><summary>${escape(summary)}</summary>${renderNode(node)}</details>`;
 }
 
 function renderDiagnostics(result: ExecuteResult): string {

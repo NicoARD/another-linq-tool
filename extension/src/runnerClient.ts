@@ -14,6 +14,7 @@ export interface ResultNode {
     properties?: PropertyNode[];
     columns?: string[];
     rows?: (string | null)[][];
+    cells?: ResultNode[][];
     rowCount?: number;
     truncated?: boolean;
 }
@@ -22,6 +23,7 @@ export interface PropertyNode {
     name: string;
     typeName?: string;
     value?: string | null;
+    node?: ResultNode;
 }
 
 export interface DiagnosticInfo {
