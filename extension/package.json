@@ -114,13 +114,13 @@
           "type": "string",
           "default": "dotnet",
           "scope": "machine",
-          "description": "Path to the dotnet executable used to launch the runner."
+          "description": "Path to the dotnet executable used only when Runner Path points to a custom .dll. The bundled runner is self-contained."
         },
         "linqRunner.runnerPath": {
           "type": "string",
           "default": "",
           "scope": "machine",
-          "description": "Absolute path to LinqRunner.dll. When empty, the runner bundled with this extension is used."
+          "description": "Absolute path to a custom LinqRunner executable or .dll. When empty, the self-contained runner bundled for this system is used."
         },
         "linqRunner.rowLimit": {
           "type": "number",
@@ -153,7 +153,8 @@
     "vscode:prepublish": "npm run build:runner && npm run compile",
     "prepackage": "node ./scripts/check-release-node.js",
     "package": "vsce package",
-    "release:check": "npm run build:runner && npm run compile && npm run package"
+    "postpackage": "node ./scripts/check-package.js",
+    "release:check": "npm run package"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

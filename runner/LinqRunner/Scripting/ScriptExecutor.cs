@@ -49,7 +49,7 @@ public static class ScriptExecutor
         {
             try
             {
-                var packageAssemblies = await Nuget.NuGetResolver.RestoreAsync(packages, "net9.0", cancellationToken);
+                var packageAssemblies = await Nuget.NuGetResolver.RestoreAsync(packages, "net11.0", cancellationToken);
                 effectiveAssemblies = [.. assemblies, .. packageAssemblies];
             }
             catch (Exception ex)

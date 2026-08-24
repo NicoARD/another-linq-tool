@@ -36,6 +36,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             ConfigPanel.show(context, profiles, () => updateStatusBar())),
         vscode.commands.registerCommand('linqRunner.openGlobalProfiles', () =>
             ConfigPanel.show(context, profiles, () => updateStatusBar())),
+        vscode.workspace.onDidChangeConfiguration((event) => {
+            if (event.affectsConfiguration('linqRunner.dotnetPath') || event.affectsConfiguration('linqRunner.runnerPath')) {
+                client?.dispose();
+                client = undefined;
+                output.appendLine('Runner launch configuration changed; the runner will restart on next use.');
+            }
+        }),
     );
 }
 
@@ -77,10 +84,11 @@ function getClient(context: vscode.ExtensionContext): RunnerClient {
 
     const config = vscode.workspace.getConfiguration('linqRunner');
     const dotnetPath = config.get<string>('dotnetPath', 'dotnet');
-    const runnerPath = resolveRunnerPath(context, config.get<string>('runnerPath', ''));
+    const launch = resolveRunnerLaunch(context, config.get<string>('runnerPath', ''), dotnetPath);
+    prepareRunnerLaunch(launch);
     const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
-    client = new RunnerClient(dotnetPath, runnerPath, (message) => output.appendLine(message), cwd);
+    client = new RunnerClient(launch.executable, launch.args, (message) => output.appendLine(message), cwd);
     context.subscriptions.push({ dispose: () => client?.dispose() });
     return client;
 }
@@ -94,15 +102,57 @@ function parseProfileDirective(text: string): { profileName?: string; body: stri
     return { profileName: match[1].trim(), body: text.slice(match[0].length) };
 }
 
-function resolveRunnerPath(context: vscode.ExtensionContext, configured: string): string {
-    if (configured) {
-        return configured;
+interface RunnerLaunch {
+    executable: string;
+    args: string[];
+    runnerPath: string;
+    bundled: boolean;
+}
+
+function prepareRunnerLaunch(launch: RunnerLaunch): void {
+    if (!fs.existsSync(launch.runnerPath)) {
+        const source = launch.bundled ? 'bundled runner' : 'configured runner';
+        throw new Error(`${source} not found at ${launch.runnerPath}. ${launch.bundled ? 'Reinstall the extension or configure Another LINQ Tool: Runner Path.' : 'Check Another LINQ Tool: Runner Path.'}`);
     }
-    return path.join(
+
+    if (process.platform !== 'win32' && launch.bundled) {
+        try {
+            fs.chmodSync(launch.runnerPath, 0o755);
+        } catch (err) {
+            throw new Error(`bundled runner is not executable and its permissions could not be updated: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    }
+}
+
+function resolveRunnerLaunch(context: vscode.ExtensionContext, configured: string, dotnetPath: string): RunnerLaunch {
+    if (configured) {
+        return path.extname(configured).toLowerCase() === '.dll'
+            ? { executable: dotnetPath, args: [configured], runnerPath: configured, bundled: false }
+            : { executable: configured, args: [], runnerPath: configured, bundled: false };
+    }
+
+    const platforms: Partial<Record<NodeJS.Platform, string>> = {
+        win32: 'win',
+        linux: 'linux',
+        darwin: 'osx',
+    };
+    const architectures: Partial<Record<NodeJS.Architecture, string>> = {
+        x64: 'x64',
+        arm64: 'arm64',
+    };
+    const platform = platforms[process.platform];
+    const architecture = architectures[process.arch];
+    if (!platform || !architecture) {
+        throw new Error(`No bundled runner is available for ${process.platform}-${process.arch}. Configure Another LINQ Tool: Runner Path to use a custom runner.`);
+    }
+
+    const runnerPath = path.join(
         context.extensionPath,
         'runner',
-        'LinqRunner.dll',
+        `${platform}-${architecture}`,
+        process.platform === 'win32' ? 'LinqRunner.exe' : 'LinqRunner',
     );
+    return { executable: runnerPath, args: [], runnerPath, bundled: true };
 }
 
 async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
@@ -112,11 +162,22 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
         return;
     }
 
-    const runnerPath = resolveRunnerPath(context, vscode.workspace.getConfiguration('linqRunner').get<string>('runnerPath', ''));
-    if (!fs.existsSync(runnerPath)) {
-        vscode.window.showErrorMessage(
-            `Another LINQ Tool: bundled runner not found at ${runnerPath}. Reinstall the extension or set Another LINQ Tool: Runner Path.`,
+    const config = vscode.workspace.getConfiguration('linqRunner');
+    let launch: RunnerLaunch;
+    try {
+        launch = resolveRunnerLaunch(
+            context,
+            config.get<string>('runnerPath', ''),
+            config.get<string>('dotnetPath', 'dotnet'),
         );
+    } catch (err) {
+        vscode.window.showErrorMessage(`Another LINQ Tool: ${err instanceof Error ? err.message : String(err)}`);
+        return;
+    }
+    try {
+        prepareRunnerLaunch(launch);
+    } catch (err) {
+        vscode.window.showErrorMessage(`Another LINQ Tool: ${err instanceof Error ? err.message : String(err)}`);
         return;
     }
 

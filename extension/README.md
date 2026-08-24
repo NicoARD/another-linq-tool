@@ -5,8 +5,8 @@ Run C# LINQ scripts directly from VS Code. The extension sends the active script
 ## Requirements
 
 - VS Code 1.85 or newer
-- .NET SDK 9.0 or newer
-- .NET 9 runtime (the extension ships with its own runner)
+
+The extension includes a self-contained .NET runner. Installed users do not need to install .NET separately.
 
 ## Running a script
 
@@ -51,14 +51,14 @@ Open the `extension` folder in VS Code and press <kbd>F5</kbd>. This launches an
 The release build publishes the runner into the extension at:
 
 ```text
-runner/LinqRunner.dll
+runner/<runtime-id>/LinqRunner[.exe]
 ```
 
 If you need to use a different runner build, set `linqRunner.runnerPath` as described below.
 
 `npm run release:check` creates a `.vsix` package. Install it in VS Code with **Extensions: Install from VSIX...** to test the same artifact that will be released.
 
-Building from source requires the .NET 9 SDK and Node.js 20 or newer. Installed VSIX users need only a .NET 9 runtime.
+Building from source requires the .NET 11 SDK (currently a preview) and Node.js 20 or newer. The release build publishes self-contained runners for Windows, Linux, and macOS on x64 and ARM64. Installed VSIX users do not need a .NET runtime or SDK.
 
 ## Configuration
 
@@ -104,8 +104,8 @@ Open **Another LINQ Tool: Open Settings** from the Command Palette, or edit VS C
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `linqRunner.dotnetPath` | `dotnet` | Path or command used to start the .NET runtime. |
-| `linqRunner.runnerPath` | empty | Absolute path to `LinqRunner.dll`. Leave empty to use the runner bundled with the extension. |
+| `linqRunner.dotnetPath` | `dotnet` | Path or command used only when a custom `.dll` is selected as the runner. |
+| `linqRunner.runnerPath` | empty | Absolute path to a custom runner executable or `.dll`. Leave empty to use the self-contained runner bundled for the current system. |
 | `linqRunner.rowLimit` | `1000` | Maximum number of items shown for sequence results. |
 | `linqRunner.profiles` | `{}` | Named profiles. Prefer the profile editor over manual changes. |
 | `linqRunner.defaultProfile` | empty | Profile selected when no explicit active profile has been chosen. |
@@ -150,9 +150,8 @@ Build the assembly containing the context before running. The extension reports 
 | **Another LINQ Tool: Open Settings** | Open this extension's VS Code settings. |
 
 ## Troubleshooting
-- **Running a script reports `Another LINQ Tool: execution failed. Cannot call write after a stream was destroyed`**: Make sure you have the required runtime installed (.NET 9).
-- **Runner not found:** reinstall the extension, or set `linqRunner.runnerPath` to an absolute DLL path.
-- **`dotnet` cannot start:** install .NET 9 SDK or set `linqRunner.dotnetPath` to the appropriate executable.
+- **Runner not found:** reinstall the extension, or set `linqRunner.runnerPath` to an absolute runner executable or DLL path.
+- **A custom runner DLL cannot start:** install its required .NET runtime or set `linqRunner.dotnetPath` to the appropriate executable.
 - **Missing types or namespaces:** select the correct profile and add the required assembly and import.
 - **Missing profile assembly:** build the referenced project and update the assembly path if its output location changed.
 - **A script or package fails:** open the **Another LINQ Tool** output channel for runner diagnostics.

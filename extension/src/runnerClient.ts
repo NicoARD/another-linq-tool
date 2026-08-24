@@ -92,8 +92,8 @@ export class RunnerClient {
     private startPromise?: Promise<void>;
 
     constructor(
-        private readonly dotnetPath: string,
-        private readonly runnerPath: string,
+        private readonly executable: string,
+        private readonly args: string[],
         private readonly log: (message: string) => void,
         private readonly cwd?: string,
     ) {}
@@ -162,8 +162,8 @@ export class RunnerClient {
     }
 
     private async start(): Promise<void> {
-        this.log(`Starting runner: ${this.dotnetPath} ${this.runnerPath}`);
-        const proc = spawn(this.dotnetPath, [this.runnerPath], { stdio: ['pipe', 'pipe', 'pipe'], cwd: this.cwd });
+        this.log(`Starting runner: ${this.executable} ${this.args.join(' ')}`.trimEnd());
+        const proc = spawn(this.executable, this.args, { stdio: ['pipe', 'pipe', 'pipe'], cwd: this.cwd });
         this.proc = proc;
 
         proc.on('error', (err) => this.log(`Runner failed to start: ${err.message}`));

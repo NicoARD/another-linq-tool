@@ -2,6 +2,8 @@
 
 Another LINQ Tool is a VS Code extension and .NET runner for executing C# LINQ scripts. Open a `.linq` or `.csx` file, run it with <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, and inspect the final value (and any `Dump()` calls) in VS Code.
 
+The packaged extension includes self-contained runners for supported Windows, Linux, and macOS systems, so extension users do not need to install .NET.
+
 It supports ordinary C# scripts, external assemblies and imports, NuGet packages, and opt-in EF Core `DbContext` profiles.
 
 ## Quick start
@@ -27,7 +29,7 @@ The complete extension setup, usage, profiles, and settings guide is in [extensi
 ## Repository layout
 
 ```text
-runner/LinqRunner/  .NET 9 runner: Roslyn execution and JSON-RPC server
+runner/LinqRunner/  .NET 11 runner: Roslyn execution and JSON-RPC server
 extension/          VS Code extension: UI, profiles, and result display
 fixtures/TestModel/ Example model assembly used by the sample profiles
 examples/           Sample C# query scripts

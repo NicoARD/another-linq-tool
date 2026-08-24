@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "atlassian": {
-      "url": "http://localhost:3036/mcp",
+      "url": "http://localhost:3035/mcp",
       "type": "httpStream",
       "transportType": "httpStream",
       "disabled": false,

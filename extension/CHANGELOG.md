@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Bundle self-contained .NET 11 runners for Windows, Linux, and macOS on x64 and ARM64, removing the .NET installation requirement for extension users.
+
 ## 1.0.5
 
 - Added a Cancel button while scripts run, with a forced runner stop fallback for non-cooperative infinite loops.
