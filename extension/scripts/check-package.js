@@ -1,4 +1,4 @@
-/* Verifies that the VSIX contains every supported self-contained host. */
+/* Verifies that the VSIX contains both portable runner targets. */
 const { readdirSync, statSync } = require('fs');
 const { resolve } = require('path');
 const yauzl = require('yauzl');
@@ -14,12 +14,12 @@ if (packages.length === 0) {
 }
 
 const requiredEntries = new Set([
-    'extension/runner/win-x64/LinqRunner.exe',
-    'extension/runner/win-arm64/LinqRunner.exe',
-    'extension/runner/linux-x64/LinqRunner',
-    'extension/runner/linux-arm64/LinqRunner',
-    'extension/runner/osx-x64/LinqRunner',
-    'extension/runner/osx-arm64/LinqRunner',
+    'extension/runner/net10.0/LinqRunner.dll',
+    'extension/runner/net10.0/LinqRunner.deps.json',
+    'extension/runner/net10.0/LinqRunner.runtimeconfig.json',
+    'extension/runner/net11.0/LinqRunner.dll',
+    'extension/runner/net11.0/LinqRunner.deps.json',
+    'extension/runner/net11.0/LinqRunner.runtimeconfig.json',
 ]);
 
 yauzl.open(packages[0].path, { lazyEntries: true }, (error, zip) => {
@@ -34,8 +34,8 @@ yauzl.open(packages[0].path, { lazyEntries: true }, (error, zip) => {
     });
     zip.on('end', () => {
         if (requiredEntries.size > 0) {
-            throw new Error(`VSIX is missing self-contained runner hosts:\n  ${[...requiredEntries].join('\n  ')}`);
+            throw new Error(`VSIX is missing portable runner files:\n  ${[...requiredEntries].join('\n  ')}`);
         }
-        console.log(`Verified all self-contained runner hosts in ${packages[0].name}.`);
+        console.log(`Verified both portable runner targets in ${packages[0].name}.`);
     });
 });

@@ -6,7 +6,9 @@ Run C# LINQ scripts directly from VS Code. The extension sends the active script
 
 - VS Code 1.85 or newer
 
-The extension includes a self-contained .NET runner. Installed users do not need to install .NET separately.
+The extension includes portable .NET 10 and .NET 11 runners and depends on Microsoft's .NET Install Tool. It reuses an existing compatible runtime when available and otherwise downloads the runtime for the current system. Users do not need to install .NET manually, but the first run may require a network connection.
+
+.NET 10 LTS is used by default. When a configured profile assembly targets `net11.0`, the extension detects its target-framework metadata and selects the .NET 11 runner for that execution. Assemblies targeting a framework newer than .NET 11 are rejected with a clear compatibility error.
 
 ## Running a script
 
@@ -84,19 +86,22 @@ npm run release:check
 
 Open the `extension` folder in VS Code and press <kbd>F5</kbd>. This launches an Extension Development Host. In that window, open one of `../examples/*.linq` and run it.
 
-On Windows, `..\build.bat` publishes all self-contained .NET 11 runners and compiles the extension. It includes runner changes such as LINQPad query headers, per-script namespaces, and Program `Main` invocation.
+On Windows, `..\build.bat` publishes the portable .NET 10 and .NET 11 runners and compiles the extension. It includes runner changes such as LINQPad query headers, per-script namespaces, and Program `Main` invocation.
 
 The release build publishes the runner into the extension at:
 
 ```text
-runner/<runtime-id>/LinqRunner[.exe]
+runner/net10.0/LinqRunner.dll
+runner/net11.0/LinqRunner.dll
 ```
 
 If you need to use a different runner build, set `linqRunner.runnerPath` as described below.
 
 `npm run release:check` creates a `.vsix` package. Install it in VS Code with **Extensions: Install from VSIX...** to test the same artifact that will be released.
 
-Building from source requires the .NET 11 SDK (currently a preview) and Node.js 20 or newer. The release build publishes self-contained runners for Windows, Linux, and macOS on x64 and ARM64. Installed VSIX users do not need a .NET runtime or SDK.
+Building from source requires the .NET 11 SDK (currently a preview; it builds both runner targets) and Node.js 20 or newer. The release build publishes framework-dependent runners shared by Windows, Linux, and macOS. Installed VSIX users do not need to install a runtime or SDK for ordinary scripts.
+
+Profiles that include NuGet packages currently require a compatible SDK on `PATH`, because package resolution creates a temporary project and invokes `dotnet build`. Runtime acquisition alone is sufficient for scripts without profile packages.
 
 ## Configuration
 
@@ -142,8 +147,8 @@ Open **Another LINQ Tool: Open Settings** from the Command Palette, or edit VS C
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `linqRunner.dotnetPath` | `dotnet` | Path or command used only when a custom `.dll` is selected as the runner. |
-| `linqRunner.runnerPath` | empty | Absolute path to a custom runner executable or `.dll`. Leave empty to use the self-contained runner bundled for the current system. |
+| `linqRunner.dotnetPath` | `dotnet` | Path or command used when a custom `.dll` is selected as the runner. |
+| `linqRunner.runnerPath` | empty | Absolute path to a custom runner executable or `.dll`. Leave empty to select the bundled .NET 10 or .NET 11 runner automatically. |
 | `linqRunner.rowLimit` | `1000` | Maximum number of items shown for sequence results. |
 | `linqRunner.profiles` | `{}` | Named profiles. Prefer the profile editor over manual changes. |
 | `linqRunner.defaultProfile` | empty | Profile selected when no explicit active profile has been chosen. |
@@ -188,11 +193,13 @@ Build the assembly containing the context before running. The extension reports 
 | **Another LINQ Tool: Open Settings** | Open this extension's VS Code settings. |
 
 ## Troubleshooting
+- **Runtime acquisition fails:** check the .NET Install Tool output, network/proxy access, or configure that tool to use an existing compatible .NET installation.
 - **Runner not found:** reinstall the extension, or set `linqRunner.runnerPath` to an absolute runner executable or DLL path.
 - **A custom runner DLL cannot start:** install its required .NET runtime or set `linqRunner.dotnetPath` to the appropriate executable.
 - **`Microsoft.Data.SqlClient is not supported on this platform`:** rebuild the referenced project so its `runtimes` directory and `.deps.json` are present beside the assembly, then restart the runner. The extension selects the matching RID-specific SqlClient implementation rather than its unsupported root facade.
 - **Missing types or namespaces:** select the correct profile and add the required assembly and import.
 - **Missing profile assembly:** build the referenced project and update the assembly path if its output location changed.
+- **A NuGet-enabled profile cannot restore:** install the SDK matching the selected runner (.NET 10 normally, or .NET 11 for a `net11.0` assembly). Runtime acquisition installs a runtime, not an SDK.
 - **A script or package fails:** open the **Another LINQ Tool** output channel for runner diagnostics.
 
 ## License

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0
+
+- Replace the six platform-specific self-contained runners with portable .NET 10 and .NET 11 runners, substantially reducing the extension package size.
+- Use the Microsoft .NET Install Tool to reuse or acquire the matching runtime; .NET 10 LTS is the default.
+- Detect the target framework of configured assemblies and select .NET 11 when a profile references a `net11.0` project.
+- Restore profile NuGet packages for the selected runner framework. NuGet-enabled profiles still require a compatible SDK because package resolution currently invokes `dotnet build`.
+
 ## 1.1.0
 
 - Bundle self-contained .NET 11 runners for Windows, Linux, and macOS on x64 and ARM64, removing the .NET installation requirement for extension users.

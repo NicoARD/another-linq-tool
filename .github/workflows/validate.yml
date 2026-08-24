@@ -23,6 +23,9 @@ jobs:
           cache-dependency-path: extension/package-lock.json
       - uses: actions/setup-dotnet@v4
         with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-dotnet@v4
+        with:
           dotnet-version: 11.0.x
           dotnet-quality: preview
       - run: npm ci

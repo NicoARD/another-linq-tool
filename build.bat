@@ -38,7 +38,7 @@ if not exist "extension\node_modules" (
     exit /b 1
 )
 
-echo Publishing self-contained .NET 11 runners...
+echo Publishing portable .NET 10 and .NET 11 runners...
 pushd "extension"
 call npm run build:runner
 if errorlevel 1 goto :failed

@@ -5,8 +5,10 @@ import { RunnerClient } from './runnerClient';
 import { ResultPanel } from './resultPanel';
 import { ProfileManager } from './profiles';
 import { ConfigPanel } from './configPanel';
+import { resolveManagedRunner, selectRunnerFramework } from './runtimeManager';
 
 let client: RunnerClient | undefined;
+let clientLaunchKey: string | undefined;
 let output: vscode.OutputChannel;
 let profiles: ProfileManager;
 let statusBar: vscode.StatusBarItem;
@@ -40,6 +42,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             if (event.affectsConfiguration('linqRunner.dotnetPath') || event.affectsConfiguration('linqRunner.runnerPath')) {
                 client?.dispose();
                 client = undefined;
+                clientLaunchKey = undefined;
                 output.appendLine('Runner launch configuration changed; the runner will restart on next use.');
             }
         }),
@@ -49,6 +52,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 export function deactivate(): void {
     client?.dispose();
     client = undefined;
+    clientLaunchKey = undefined;
 }
 
 function updateStatusBar(): void {
@@ -77,18 +81,25 @@ async function selectProfile(): Promise<void> {
         updateStatusBar();
     }
 }
-function getClient(context: vscode.ExtensionContext): RunnerClient {
-    if (client) {
+async function getClient(context: vscode.ExtensionContext, assemblies: readonly string[]): Promise<RunnerClient> {
+    const config = vscode.workspace.getConfiguration('linqRunner');
+    const dotnetPath = config.get<string>('dotnetPath', 'dotnet');
+    const configuredRunner = config.get<string>('runnerPath', '');
+    const launch = configuredRunner
+        ? resolveCustomRunnerLaunch(configuredRunner, dotnetPath)
+        : await resolveManagedRunner(context, selectRunnerFramework(assemblies), (message) => output.appendLine(message));
+    const launchKey = JSON.stringify([launch.executable, ...launch.args]);
+    if (client && clientLaunchKey === launchKey) {
         return client;
     }
 
-    const config = vscode.workspace.getConfiguration('linqRunner');
-    const dotnetPath = config.get<string>('dotnetPath', 'dotnet');
-    const launch = resolveRunnerLaunch(context, config.get<string>('runnerPath', ''), dotnetPath);
+    client?.dispose();
     prepareRunnerLaunch(launch);
     const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
+    output.appendLine(`Using ${'framework' in launch ? launch.framework : 'custom'} runner.`);
     client = new RunnerClient(launch.executable, launch.args, (message) => output.appendLine(message), cwd);
+    clientLaunchKey = launchKey;
     context.subscriptions.push({ dispose: () => client?.dispose() });
     return client;
 }
@@ -145,70 +156,18 @@ function prepareRunnerLaunch(launch: RunnerLaunch): void {
         const source = launch.bundled ? 'bundled runner' : 'configured runner';
         throw new Error(`${source} not found at ${launch.runnerPath}. ${launch.bundled ? 'Reinstall the extension or configure Another LINQ Tool: Runner Path.' : 'Check Another LINQ Tool: Runner Path.'}`);
     }
-
-    if (process.platform !== 'win32' && launch.bundled) {
-        try {
-            fs.chmodSync(launch.runnerPath, 0o755);
-        } catch (err) {
-            throw new Error(`bundled runner is not executable and its permissions could not be updated: ${err instanceof Error ? err.message : String(err)}`);
-        }
-    }
 }
 
-function resolveRunnerLaunch(context: vscode.ExtensionContext, configured: string, dotnetPath: string): RunnerLaunch {
-    if (configured) {
-        return path.extname(configured).toLowerCase() === '.dll'
-            ? { executable: dotnetPath, args: [configured], runnerPath: configured, bundled: false }
-            : { executable: configured, args: [], runnerPath: configured, bundled: false };
-    }
-
-    const platforms: Partial<Record<NodeJS.Platform, string>> = {
-        win32: 'win',
-        linux: 'linux',
-        darwin: 'osx',
-    };
-    const architectures: Partial<Record<NodeJS.Architecture, string>> = {
-        x64: 'x64',
-        arm64: 'arm64',
-    };
-    const platform = platforms[process.platform];
-    const architecture = architectures[process.arch];
-    if (!platform || !architecture) {
-        throw new Error(`No bundled runner is available for ${process.platform}-${process.arch}. Configure Another LINQ Tool: Runner Path to use a custom runner.`);
-    }
-
-    const runnerPath = path.join(
-        context.extensionPath,
-        'runner',
-        `${platform}-${architecture}`,
-        process.platform === 'win32' ? 'LinqRunner.exe' : 'LinqRunner',
-    );
-    return { executable: runnerPath, args: [], runnerPath, bundled: true };
+function resolveCustomRunnerLaunch(configured: string, dotnetPath: string): RunnerLaunch {
+    return path.extname(configured).toLowerCase() === '.dll'
+        ? { executable: dotnetPath, args: [configured], runnerPath: configured, bundled: false }
+        : { executable: configured, args: [], runnerPath: configured, bundled: false };
 }
 
 async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.showWarningMessage('Another LINQ Tool: no active editor.');
-        return;
-    }
-
-    const config = vscode.workspace.getConfiguration('linqRunner');
-    let launch: RunnerLaunch;
-    try {
-        launch = resolveRunnerLaunch(
-            context,
-            config.get<string>('runnerPath', ''),
-            config.get<string>('dotnetPath', 'dotnet'),
-        );
-    } catch (err) {
-        vscode.window.showErrorMessage(`Another LINQ Tool: ${err instanceof Error ? err.message : String(err)}`);
-        return;
-    }
-    try {
-        prepareRunnerLaunch(launch);
-    } catch (err) {
-        vscode.window.showErrorMessage(`Another LINQ Tool: ${err instanceof Error ? err.message : String(err)}`);
         return;
     }
 
@@ -238,7 +197,8 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
         { location: vscode.ProgressLocation.Notification, title: 'Running script…', cancellable: true },
         async (_progress, cancellationToken) => {
             try {
-                const result = await getClient(context).execute(
+                const runnerClient = await getClient(context, profile?.assemblies ?? []);
+                const result = await runnerClient.execute(
                     source,
                     rowLimit,
                     profile?.assemblies ?? [],

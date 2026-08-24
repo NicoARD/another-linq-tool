@@ -2,6 +2,11 @@
 
 All notable changes to Another LINQ Tool are documented in this file.
 
+## 1.2.0
+
+- Use portable .NET 10 and .NET 11 runners with managed runtime acquisition instead of bundling six self-contained runtimes.
+- Default to .NET 10 LTS and automatically select .NET 11 for profiles referencing `net11.0` assemblies.
+
 ## 1.0.0
 
 - Initial release of the VS Code extension and self-contained .NET runner.
