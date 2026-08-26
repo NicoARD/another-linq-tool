@@ -1,8 +1,44 @@
 # Another LINQ Tool for VS Code
 
-Run C# LINQ scripts directly from VS Code. The extension sends the active script to a local .NET runner and displays its result in a result panel.
+Run C# and LINQ scripts interactively inside VS Code. Open a `.linq` or `.csx` file, write ordinary C#, and press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to execute it locally and inspect the result.
 
-## Requirements
+The final expression is displayed automatically, and `Dump()` can display intermediate or multiple values. Results appear in an interactive panel where nested objects and collections can be expanded.
+
+## Use your own code and databases
+
+Another LINQ Tool lets scripts use your existing compiled application code. Add your DLLs to an execution profile, import their namespaces, and use their public types, methods, extension methods, and business logic directly from a script. 
+
+Thanks to .NET's backward compatibility, assemblies targeting compatible earlier .NET versions can generally run on the bundled .NET 10 or .NET 11 runner. Assemblies that depend on .NET Framework-only APIs or otherwise incompatible runtimes may not load.
+
+Profiles can also configure an Entity Framework Core `DbContext`. The configured context is made available as `Db`, so scripts can use your application's data model without repeatedly setting up references and database access.
+
+```csharp
+var overdueInvoices = await Db.Invoices
+    .Where(invoice => invoice.IsOverdue())
+    .OrderBy(invoice => invoice.DueDate)
+    .ToListAsync();
+
+overdueInvoices.Dump("Overdue invoices");
+```
+
+This provides an interactive query window backed by your actual application code, without creating a temporary console project for every query.
+
+## Features
+
+- Run `.linq` and `.csx` files with <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or the editor play button.
+- Reference and use your own compiled .NET assemblies, generally including compatible assemblies targeting earlier .NET versions through .NET 10 or .NET 11.
+- Configure an EF Core `DbContext` and access it as `Db`.
+- Group assemblies, imported namespaces, NuGet packages, setup code, and database configuration into reusable profiles.
+- Display a script's final expression automatically and use `Dump()` anywhere in the script.
+- Inspect expandable objects, properties, and collections in the result panel.
+- Run asynchronous C# and EF Core queries with `async` and `await`.
+- Partially run LINQPad query files: C# `Expression`, `Statements`, and `Program` queries are supported, but LINQPad profiles are not imported and database connections configured in LINQPad cannot be used.
+- Choose a profile globally or override it for an individual script with `@profile`.
+- Use automatically managed .NET 10 and .NET 11 runtimes.
+
+<details>
+<summary><strong>Requirements</strong></summary>
+
 
 - VS Code 1.85 or newer
 
@@ -10,7 +46,11 @@ The extension includes portable .NET 10 and .NET 11 runners and depends on Micro
 
 .NET 10 LTS is used by default. When a configured profile assembly targets `net11.0`, the extension detects its target-framework metadata and selects the .NET 11 runner for that execution. Assemblies targeting a framework newer than .NET 11 are rejected with a clear compatibility error.
 
-## Running a script
+</details>
+
+<details>
+<summary><strong>Running a script</strong></summary>
+
 
 1. Open a `.linq` or `.csx` file in VS Code.
 2. Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, select the play button in the editor title bar, or run **Another LINQ Tool: Run Current File** from the Command Palette.
@@ -74,36 +114,11 @@ void Main()
 
 Supported kinds are `Program`, `Expression`, and `Statements`. These directives may be combined with `@profile`.
 
-## Running from source
+</details>
 
-This repository keeps the extension and runner side by side. From the repository root:
+<details>
+<summary><strong>Configuration</strong></summary>
 
-```powershell
-cd extension
-npm install
-npm run release:check
-```
-
-Open the `extension` folder in VS Code and press <kbd>F5</kbd>. This launches an Extension Development Host. In that window, open one of `../examples/*.linq` and run it.
-
-On Windows, `..\build.bat` publishes the portable .NET 10 and .NET 11 runners and compiles the extension. It includes runner changes such as LINQPad query headers, per-script namespaces, and Program `Main` invocation.
-
-The release build publishes the runner into the extension at:
-
-```text
-runner/net10.0/LinqRunner.dll
-runner/net11.0/LinqRunner.dll
-```
-
-If you need to use a different runner build, set `linqRunner.runnerPath` as described below.
-
-`npm run release:check` creates a `.vsix` package. Install it in VS Code with **Extensions: Install from VSIX...** to test the same artifact that will be released.
-
-Building from source requires the .NET 11 SDK (currently a preview; it builds both runner targets) and Node.js 20 or newer. The release build publishes framework-dependent runners shared by Windows, Linux, and macOS. Installed VSIX users do not need to install a runtime or SDK for ordinary scripts.
-
-Profiles that include NuGet packages currently require a compatible SDK on `PATH`, because package resolution creates a temporary project and invokes `dotnet build`. Runtime acquisition alone is sufficient for scripts without profile packages.
-
-## Configuration
 
 ### Execution profiles
 
@@ -135,7 +150,7 @@ Db.Customers.Where(customer => customer.IsActive).ToList()
 The directive may also be written as a comment, and profile names with spaces are supported:
 
 ```csharp
-// @profile My Staging DB
+// @profile MyStagingDB
 ```
 
 The `@profile` line is stripped before the script runs. If the named profile does not exist, the active profile (or the default) is used instead and a warning is shown.
@@ -185,7 +200,11 @@ Db.Customers.Where(customer => customer.IsActive).ToList()
 
 Build the assembly containing the context before running. The extension reports missing assembly paths in the **Another LINQ Tool** output channel.
 
-## Commands
+</details>
+
+<details>
+<summary><strong>Commands</strong></summary>
+
 
 | Command | Description |
 | --- | --- |
@@ -195,7 +214,11 @@ Build the assembly containing the context before running. The extension reports 
 | **Another LINQ Tool: Configure Profiles** | Open the profile editor. |
 | **Another LINQ Tool: Open Settings** | Open this extension's VS Code settings. |
 
-## Troubleshooting
+</details>
+
+<details>
+<summary><strong>Troubleshooting</strong></summary>
+
 - **Runtime acquisition fails:** check the .NET Install Tool output, network/proxy access, or configure that tool to use an existing compatible .NET installation.
 - **Runner not found:** reinstall the extension, or set `linqRunner.runnerPath` to an absolute runner executable or DLL path.
 - **A custom runner DLL cannot start:** install its required .NET runtime or set `linqRunner.dotnetPath` to the appropriate executable.
@@ -205,6 +228,12 @@ Build the assembly containing the context before running. The extension reports 
 - **A NuGet-enabled profile cannot restore:** install the SDK matching the selected runner (.NET 10 normally, or .NET 11 for a `net11.0` assembly). Runtime acquisition installs a runtime, not an SDK.
 - **A script or package fails:** open the **Another LINQ Tool** output channel for runner diagnostics.
 
-## License
+</details>
+
+<details>
+<summary><strong>License</strong></summary>
+
 
 The extension is covered by the [CC BY-NC 4.0 license](LICENSE): free to use, modify, and fork non-commercially; not permitted for sale or other commercial use.
+
+</details>
