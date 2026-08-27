@@ -28,7 +28,7 @@ npm install
 npm run release:check
 ```
 
-On Windows, run `build.bat` from the repository root to publish the portable .NET 10 and .NET 11 runners and compile the extension without creating a VSIX. Install the extension dependencies first with `npm install` in the `extension` directory.
+On Windows, run `build.bat` from the repository root to publish the portable .NET 10 and .NET 11 runners and compile the extension without creating a VSIX. Run `release-vsix.bat` to build, create the versioned VSIX in the `extension` directory, and verify its runner payload. Install the extension dependencies first with `npm install` in the `extension` directory.
 
 `release:check` publishes the .NET runner into the extension, compiles TypeScript, and creates a `.vsix` package. Install that VSIX in a clean VS Code profile to validate the release artifact. For local development, open the `extension` folder in VS Code and press <kbd>F5</kbd>. In the Extension Development Host window, open a script in `../examples`, then press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or run **Another LINQ Tool: Run Current File**.
 
