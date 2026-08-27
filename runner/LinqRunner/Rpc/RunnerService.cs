@@ -60,6 +60,24 @@ public sealed class RunnerService
             },
             cancellationToken);
 
+    [JsonRpcMethod("complete", UseSingleObjectParameterDeserialization = true)]
+    public Task<CompletionResult> Complete(CompleteParams parameters, CancellationToken cancellationToken) =>
+        ScriptCompletionService.CompleteAsync(
+            parameters.Source ?? string.Empty,
+            parameters.Position,
+            parameters.Assemblies ?? [],
+            parameters.Imports ?? [],
+            parameters.Packages ?? [],
+            new Data.DbContextRequest
+            {
+                Context = parameters.Context,
+                Provider = parameters.Provider,
+                FactoryType = parameters.ContextFactoryType,
+                FactoryMethod = parameters.ContextFactoryMethod,
+            },
+            parameters.NamespacesOnly,
+            cancellationToken);
+
     [JsonRpcMethod("shutdown")]
     public void Shutdown() => _ = Task.Run(async () =>
     {
@@ -91,4 +109,18 @@ public sealed class ExecuteParams
     public string? ConnectionString { get; set; }
     public string? ContextFactoryType { get; set; }
     public string? ContextFactoryMethod { get; set; }
+}
+
+public sealed class CompleteParams
+{
+    public string? Source { get; set; }
+    public int Position { get; set; }
+    public string[]? Assemblies { get; set; }
+    public string[]? Imports { get; set; }
+    public string[]? Packages { get; set; }
+    public string? Context { get; set; }
+    public string? Provider { get; set; }
+    public string? ContextFactoryType { get; set; }
+    public string? ContextFactoryMethod { get; set; }
+    public bool NamespacesOnly { get; set; }
 }

@@ -21,7 +21,7 @@ public static class ScriptExecutor
     // Console redirection is process-global, so executions are serialized.
     private static readonly SemaphoreSlim ExecutionGate = new(1, 1);
 
-    private static readonly string[] DefaultImports =
+    internal static readonly string[] DefaultImports =
     [
         "System",
         "System.Linq",

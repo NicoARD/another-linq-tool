@@ -4,6 +4,36 @@
   "scopeName": "source.linq-csx",
   "patterns": [
     {
+      "begin": "^(\\s*)(<)(Query)(?=\\s|>)",
+      "beginCaptures": {
+        "2": {
+          "name": "punctuation.definition.tag.begin.xml"
+        },
+        "3": {
+          "name": "entity.name.tag.localname.xml"
+        }
+      },
+      "end": "^(\\s*)(</)(Query)(\\s*>)",
+      "endCaptures": {
+        "2": {
+          "name": "punctuation.definition.tag.begin.xml"
+        },
+        "3": {
+          "name": "entity.name.tag.localname.xml"
+        },
+        "4": {
+          "name": "punctuation.definition.tag.end.xml"
+        }
+      },
+      "name": "meta.embedded.block.xml.linq-csx",
+      "contentName": "text.xml",
+      "patterns": [
+        {
+          "include": "text.xml"
+        }
+      ]
+    },
+    {
       "match": "^(\\s*)(?:(//)[ \\t]*)?(@(profile|kind|query|namespace))([ \\t]+)([^\\r\\n]+)$",
       "captures": {
         "2": {

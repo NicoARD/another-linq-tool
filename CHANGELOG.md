@@ -2,6 +2,11 @@
 
 All notable changes to Another LINQ Tool are documented in this file.
 
+## 1.2.1
+
+- Add profile-aware C# autocomplete for preludes, imports, referenced DLLs, NuGet packages, and configured `DbContext` types.
+- Add completion for `@profile`, `@namespace`, and LINQPad `<Namespace>` metadata, and recognize LINQPad query headers as XML without disrupting C# completion below them.
+
 ## 1.2.0
 
 - Replace the six platform-specific self-contained runners with portable .NET 10 and .NET 11 runners, substantially reducing the extension package size.

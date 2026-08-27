@@ -6,6 +6,8 @@ The packaged extension includes portable .NET 10 and .NET 11 runners. It reuses 
 
 It supports ordinary C# scripts, LINQPad-style Expression, Statements, and Program queries, external assemblies and imports, NuGet packages, and opt-in EF Core `DbContext` profiles.
 
+Editor autocomplete uses the active script profile, including its prelude, imports, referenced DLLs, NuGet packages, and typed `DbContext`. Profile and namespace metadata can also be completed in native directives and LINQPad query headers.
+
 LINQPad `Expression` and `Statements` query kinds are interchangeable in Another LINQ Tool. Both are executed dynamically: statements run normally, and a final expression without a semicolon is automatically displayed.
 
 Result values and `Dump()` output retain nested objects and collections. Expand their disclosure arrows in the result panel to navigate into lists and properties.

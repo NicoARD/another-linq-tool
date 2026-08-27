@@ -85,6 +85,17 @@ export interface DbOptions {
     contextFactoryMethod?: string;
 }
 
+export interface CompletionEntry {
+    label: string;
+    kind: 'namespace' | 'interface' | 'enum' | 'struct' | 'class' | 'method' | 'property' | 'field' | 'event' | 'variable' | 'value';
+    detail?: string;
+}
+
+export interface CompletionResult {
+    items: CompletionEntry[];
+    error?: string;
+}
+
 /**
  * Owns the runner child process and a JSON-RPC connection to it over stdio.
  * The process is started lazily on first use and restarted on demand.
@@ -133,6 +144,24 @@ export class RunnerClient {
                 clearTimeout(forcedStop);
             }
         }
+    }
+
+    async complete(
+        source: string,
+        position: number,
+        assemblies: string[],
+        imports: string[],
+        packages: string[],
+        db: DbOptions,
+        namespacesOnly: boolean,
+        cancellationToken?: CancellationToken,
+    ): Promise<CompletionResult> {
+        await this.ensureStarted();
+        return this.connection!.sendRequest<CompletionResult>(
+            'complete',
+            { source, position, assemblies, imports, packages, ...db, namespacesOnly },
+            cancellationToken,
+        );
     }
 
     async restart(): Promise<void> {

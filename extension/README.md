@@ -28,6 +28,7 @@ This provides an interactive query window backed by your actual application code
 - Run `.linq` and `.csx` files with <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or the editor play button.
 - Reference and use your own compiled .NET assemblies, generally including compatible assemblies targeting earlier .NET versions through .NET 10 or .NET 11.
 - Configure an EF Core `DbContext` and access it as `Db`.
+- Get profile-aware C# autocomplete from profile preludes, imported namespaces, referenced DLLs, NuGet packages, and the configured `DbContext`.
 - Group assemblies, imported namespaces, NuGet packages, setup code, and database configuration into reusable profiles.
 - Display a script's final expression automatically and use `Dump()` anywhere in the script.
 - Inspect expandable objects, properties, and collections in the result panel.

@@ -46,7 +46,101 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 output.appendLine('Runner launch configuration changed; the runner will restart on next use.');
             }
         }),
+        vscode.languages.registerCompletionItemProvider(
+            { language: 'linq-csx' },
+            { provideCompletionItems: (document, position, token) => provideCompletionItems(context, document, position, token) },
+            '.', '@', ' ',
+        ),
     );
+}
+
+async function provideCompletionItems(
+    context: vscode.ExtensionContext,
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    cancellationToken: vscode.CancellationToken,
+): Promise<vscode.CompletionItem[] | undefined> {
+    const linePrefix = document.lineAt(position.line).text.slice(0, position.character);
+    const profileDirective = /^\s*(?:\/\/\s*)?@profile(?:\s+(.*))?$/i.exec(linePrefix);
+    if (profileDirective) {
+        const range = directiveValueRange(document, position, profileDirective[1]);
+        return profiles.listProfiles().map((name) => {
+            const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Value);
+            item.detail = 'Another LINQ Tool profile';
+            item.range = range;
+            return item;
+        });
+    }
+
+    const namespaceDirective = /^\s*(?:\/\/\s*)?@namespace(?:\s+(.*))?$/i.exec(linePrefix);
+    const xmlNamespace = /^\s*<Namespace>([^<]*)$/i.exec(linePrefix);
+    const parsed = parseProfileDirective(document.getText());
+    const profile = await profiles.resolveActive(parsed.profileName);
+    if (cancellationToken.isCancellationRequested) {
+        return undefined;
+    }
+
+    const prelude = profile?.prelude?.trim() ? `${profile.prelude}\n\n` : '';
+    const source = prelude + parsed.body;
+    const sourcePosition = prelude.length + document.offsetAt(position);
+    const runnerClient = await getClient(context, profile?.assemblies ?? [], profile?.targetFramework);
+    const result = await runnerClient.complete(
+        source,
+        sourcePosition,
+        profile?.assemblies ?? [],
+        profile?.imports ?? [],
+        profile?.packages ?? [],
+        {
+            context: profile?.context,
+            provider: profile?.provider,
+            contextFactoryType: profile?.contextFactoryType,
+            contextFactoryMethod: profile?.contextFactoryMethod,
+        },
+        Boolean(namespaceDirective || xmlNamespace),
+        cancellationToken,
+    );
+    if (result.error) {
+        output.appendLine(`Completion failed: ${result.error}`);
+        return undefined;
+    }
+
+    const namespaceMatch = namespaceDirective ?? xmlNamespace;
+    const range = namespaceMatch
+        ? directiveValueRange(document, position, namespaceMatch[1])
+        : document.getWordRangeAtPosition(position);
+    return result.items.map((entry) => {
+        const item = new vscode.CompletionItem(entry.label, completionKind(entry.kind));
+        item.detail = entry.detail;
+        if (range) {
+            item.range = range;
+        }
+        return item;
+    });
+}
+
+function directiveValueRange(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    value: string | undefined,
+): vscode.Range {
+    const length = value?.length ?? 0;
+    return new vscode.Range(position.translate(0, -length), position);
+}
+
+function completionKind(kind: string): vscode.CompletionItemKind {
+    switch (kind) {
+        case 'namespace': return vscode.CompletionItemKind.Module;
+        case 'interface': return vscode.CompletionItemKind.Interface;
+        case 'enum': return vscode.CompletionItemKind.Enum;
+        case 'struct': return vscode.CompletionItemKind.Struct;
+        case 'class': return vscode.CompletionItemKind.Class;
+        case 'method': return vscode.CompletionItemKind.Method;
+        case 'property': return vscode.CompletionItemKind.Property;
+        case 'field': return vscode.CompletionItemKind.Field;
+        case 'event': return vscode.CompletionItemKind.Event;
+        case 'variable': return vscode.CompletionItemKind.Variable;
+        default: return vscode.CompletionItemKind.Value;
+    }
 }
 
 export function deactivate(): void {
