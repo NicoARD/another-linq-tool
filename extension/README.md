@@ -4,6 +4,8 @@ Run C# and LINQ scripts interactively inside VS Code. Open a `.linq` or `.csx` f
 
 The final expression is displayed automatically, and `Dump()` can display intermediate or multiple values. Results appear in an interactive panel where nested objects and collections can be expanded.
 
+![Another LINQ Tool in action](https://i.imgur.com/QdQChSy.gif)
+
 ## Use your own code and databases
 
 Another LINQ Tool lets scripts use your existing compiled application code. Add your DLLs to an execution profile, import their namespaces, and use their public types, methods, extension methods, and business logic directly from a script. 
@@ -25,7 +27,7 @@ This provides an interactive query window backed by your actual application code
 
 ## Features
 
-- Run `.linq` and `.csx` files with <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or the editor play button.
+- Run C# scripts (`.linq` and `.csx` files) with <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or the editor play button.
 - Reference and use your own compiled .NET assemblies, including compatible earlier versions and newer runtimes detected from assembly metadata.
 - Configure an EF Core `DbContext` and access it as `Db`.
 - Get profile-aware C# autocomplete from profile preludes, imported namespaces, referenced DLLs, NuGet packages, and the configured `DbContext`.
