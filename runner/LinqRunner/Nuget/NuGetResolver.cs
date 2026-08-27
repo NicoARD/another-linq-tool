@@ -25,7 +25,7 @@ public static class NuGetResolver
             return [];
         }
 
-        var key = string.Join(";", packages.Select(NormalizePackage).OrderBy(p => p, StringComparer.OrdinalIgnoreCase));
+        var key = targetFramework + ";" + string.Join(";", packages.Select(NormalizePackage).OrderBy(p => p, StringComparer.OrdinalIgnoreCase));
 
         await Gate.WaitAsync(cancellationToken);
         try

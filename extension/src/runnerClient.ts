@@ -83,6 +83,7 @@ export interface DbOptions {
     connectionString?: string;
     contextFactoryType?: string;
     contextFactoryMethod?: string;
+    efCoreVersion?: string;
 }
 
 export interface CompletionEntry {
@@ -110,6 +111,7 @@ export class RunnerClient {
         private readonly args: string[],
         private readonly log: (message: string) => void,
         private readonly cwd?: string,
+        private readonly environment?: NodeJS.ProcessEnv,
     ) {}
 
     async execute(
@@ -195,7 +197,11 @@ export class RunnerClient {
 
     private async start(): Promise<void> {
         this.log(`Starting runner: ${this.executable} ${this.args.join(' ')}`.trimEnd());
-        const proc = spawn(this.executable, this.args, { stdio: ['pipe', 'pipe', 'pipe'], cwd: this.cwd });
+        const proc = spawn(this.executable, this.args, {
+            stdio: ['pipe', 'pipe', 'pipe'],
+            cwd: this.cwd,
+            env: this.environment,
+        });
         this.proc = proc;
 
         proc.on('error', (err) => this.log(`Runner failed to start: ${err.message}`));

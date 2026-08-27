@@ -4,6 +4,9 @@ All notable changes to Another LINQ Tool are documented in this file.
 
 ## 1.2.1
 
+- Replace target-specific runner binaries with one .NET 8 roll-forward runner that launches on the runtime selected for the active profile.
+- Isolate profile dependency sets by automatically restarting the runner when assemblies, packages, providers, or EF versions change.
+- Detect and validate EF Core dependency families, add an optional profile EF version, and restore a missing Microsoft provider at the matching version.
 - Add profile-aware C# autocomplete for preludes, imports, referenced DLLs, NuGet packages, and configured `DbContext` types.
 - Add completion for `@profile`, `@namespace`, and LINQPad `<Namespace>` metadata, and recognize LINQPad query headers as XML without disrupting C# completion below them.
 

@@ -2,7 +2,7 @@
 
 Another LINQ Tool is a VS Code extension and .NET runner for executing C# LINQ scripts. Open a `.linq` or `.csx` file, run it with <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, and inspect the final value (and any `Dump()` calls) in VS Code.
 
-The packaged extension includes portable .NET 10 and .NET 11 runners. It reuses a compatible installed runtime or acquires one through Microsoft's .NET Install Tool, so extension users do not need to install .NET manually.
+The packaged extension includes one portable roll-forward runner. It reuses a compatible installed runtime or acquires one through Microsoft's .NET Install Tool, so extension users do not need to install .NET manually or wait for a runner rebuild when a newer runtime is selected.
 
 It supports ordinary C# scripts, LINQPad-style Expression, Statements, and Program queries, external assemblies and imports, NuGet packages, and opt-in EF Core `DbContext` profiles.
 
@@ -16,7 +16,7 @@ Result values and `Dump()` output retain nested objects and collections. Expand 
 
 You need:
 
-- .NET 11 SDK (currently a preview; it builds both runner targets)
+- .NET 8 SDK or newer
 - Node.js 20 or newer
 - Visual Studio Code 1.85 or newer
 
@@ -28,7 +28,7 @@ npm install
 npm run release:check
 ```
 
-On Windows, run `build.bat` from the repository root to publish the portable .NET 10 and .NET 11 runners and compile the extension without creating a VSIX. Run `release-vsix.bat` to build, create the versioned VSIX in the `extension` directory, and verify its runner payload. Install the extension dependencies first with `npm install` in the `extension` directory.
+On Windows, run `build.bat` from the repository root to publish the portable runner and compile the extension without creating a VSIX. Run `release-vsix.bat` to build, create the versioned VSIX in the `extension` directory, and verify its runner payload. Install the extension dependencies first with `npm install` in the `extension` directory.
 
 `release:check` publishes the .NET runner into the extension, compiles TypeScript, and creates a `.vsix` package. Install that VSIX in a clean VS Code profile to validate the release artifact. For local development, open the `extension` folder in VS Code and press <kbd>F5</kbd>. In the Extension Development Host window, open a script in `../examples`, then press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or run **Another LINQ Tool: Run Current File**.
 
@@ -37,7 +37,7 @@ The complete extension setup, usage, profiles, and settings guide is in [extensi
 ## Repository layout
 
 ```text
-runner/LinqRunner/  .NET 10/11 runner: Roslyn execution and JSON-RPC server
+runner/LinqRunner/  Portable roll-forward runner: Roslyn execution and JSON-RPC server
 extension/          VS Code extension: UI, profiles, and result display
 fixtures/TestModel/ Example model assembly used by the sample profiles
 examples/           Sample C# query scripts

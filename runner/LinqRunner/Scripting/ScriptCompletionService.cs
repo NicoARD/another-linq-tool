@@ -27,15 +27,18 @@ public static class ScriptCompletionService
             // Namespace discovery only needs the profile's reference graph. Do not parse the editor text
             // in that mode because the user may currently be typing an incomplete XML/directive header.
             var document = ScriptDocument.Parse(namespacesOnly ? string.Empty : source);
+            var effectivePackages = EfCoreDependencyPolicy.PreparePackages(packages, assemblies, dbRequest);
             var effectiveAssemblies = assemblies;
-            if (packages.Count > 0)
+            if (effectivePackages.Count > 0)
             {
                 var packageAssemblies = await Nuget.NuGetResolver.RestoreAsync(
-                    packages,
+                    effectivePackages,
                     $"net{Environment.Version.Major}.0",
                     cancellationToken);
                 effectiveAssemblies = [.. assemblies, .. packageAssemblies];
             }
+
+            EfCoreDependencyPolicy.Validate(effectiveAssemblies, dbRequest);
 
             var loaded = UserAssemblyLoader.Load(effectiveAssemblies);
             var globalsType = ResolveGlobalsType(dbRequest, loaded.Assemblies);

@@ -14,6 +14,7 @@ export type ProfileTargetFramework = 'net10.0' | 'net11.0';
 
 export interface ProfileEntry {
     targetFramework?: ProfileTargetFramework;
+    efCoreVersion?: string;
     assemblies?: AssemblyEntry[];
     imports?: string[];
     packages?: string[];
@@ -39,6 +40,7 @@ export function normalizeAssembly(entry: AssemblyEntry): { path: string; enabled
 export interface ResolvedProfile {
     name: string;
     targetFramework?: ProfileTargetFramework;
+    efCoreVersion?: string;
     assemblies: string[];
     imports: string[];
     packages: string[];
@@ -143,6 +145,7 @@ export class ProfileManager {
         return {
             name,
             targetFramework: raw.targetFramework,
+            efCoreVersion: raw.efCoreVersion?.trim() || undefined,
             assemblies,
             imports: raw.imports ?? [],
             packages: raw.packages ?? [],

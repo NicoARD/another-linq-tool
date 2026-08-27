@@ -58,13 +58,23 @@ public static class ScriptExecutor
 
         // Restore any profile NuGet packages and add the resolved DLLs to the assembly set so the loader
         // references and loads them (and their deps) exactly like application assemblies.
+        IReadOnlyList<string> effectivePackages;
+        try
+        {
+            effectivePackages = EfCoreDependencyPolicy.PreparePackages(packages, assemblies, dbRequest);
+        }
+        catch (Exception ex)
+        {
+            return InfrastructureError($"EF Core dependency resolution failed: {ex.Message}", ex, stopwatch);
+        }
+
         var effectiveAssemblies = assemblies;
-        if (packages.Count > 0)
+        if (effectivePackages.Count > 0)
         {
             try
             {
                 var packageAssemblies = await Nuget.NuGetResolver.RestoreAsync(
-                    packages,
+                    effectivePackages,
                     $"net{Environment.Version.Major}.0",
                     cancellationToken);
                 effectiveAssemblies = [.. assemblies, .. packageAssemblies];
@@ -73,6 +83,15 @@ public static class ScriptExecutor
             {
                 return InfrastructureError($"NuGet restore failed: {ex.Message}", ex, stopwatch);
             }
+        }
+
+        try
+        {
+            EfCoreDependencyPolicy.Validate(effectiveAssemblies, dbRequest);
+        }
+        catch (Exception ex)
+        {
+            return InfrastructureError($"EF Core dependency validation failed: {ex.Message}", ex, stopwatch);
         }
 
         // Register the loaded user assemblies with Roslyn so both compilation (metadata references)

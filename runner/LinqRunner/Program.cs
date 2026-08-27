@@ -51,6 +51,7 @@ static class Cli
             ConnectionString = SingleOption(args, "--connection"),
             FactoryType = SingleOption(args, "--factory-type"),
             FactoryMethod = SingleOption(args, "--factory-method"),
+            EfCoreVersion = SingleOption(args, "--ef-version"),
         };
 
         var source = await File.ReadAllTextAsync(file);

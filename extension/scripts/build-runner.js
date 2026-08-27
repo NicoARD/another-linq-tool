@@ -1,6 +1,6 @@
 /*
- * Publishes portable .NET 10 and .NET 11 runners into the extension. Keep this
- * script dependency-free so it runs during vsce prepublish on every platform.
+ * Publishes one portable runner which rolls forward onto the execution runtime selected for the
+ * active profile. Keep this script dependency-free so it runs during vsce prepublish everywhere.
  */
 const { existsSync, rmSync } = require('fs');
 const { join, resolve } = require('path');
@@ -10,7 +10,7 @@ const extensionRoot = resolve(__dirname, '..');
 const repositoryRoot = resolve(extensionRoot, '..');
 const project = join(repositoryRoot, 'runner', 'LinqRunner', 'LinqRunner.csproj');
 const output = join(extensionRoot, 'runner');
-const targetFrameworks = ['net10.0', 'net11.0'];
+const targetFrameworks = ['net8.0'];
 
 if (!existsSync(project)) {
     throw new Error(`Runner project was not found: ${project}`);

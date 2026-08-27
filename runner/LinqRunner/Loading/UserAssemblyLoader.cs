@@ -80,6 +80,11 @@ public static class UserAssemblyLoader
             var fullPaths = requestedPaths
                 .Select(SelectRuntimeAsset)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
+                // A restored provider can copy the same EF dependency already published beside the
+                // application. Load one canonical file per assembly identity; a process cannot load
+                // competing versions with the same simple name into its default context.
+                .GroupBy(AssemblySimpleName, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
                 .ToList();
 
             foreach (var path in requestedPaths)
@@ -377,6 +382,18 @@ public static class UserAssemblyLoader
         return Version.TryParse(version, out var parsed) && parsed.Major <= Environment.Version.Major
             ? parsed.Major * 100 + parsed.Minor
             : 0;
+    }
+
+    private static string AssemblySimpleName(string path)
+    {
+        try
+        {
+            return AssemblyName.GetAssemblyName(path).Name ?? Path.GetFileNameWithoutExtension(path);
+        }
+        catch
+        {
+            return Path.GetFileNameWithoutExtension(path);
+        }
     }
 
     private static IEnumerable<string> NativeFileNames(string libraryName)

@@ -127,7 +127,7 @@
           "type": "string",
           "default": "",
           "scope": "machine",
-          "description": "Absolute path to a custom LinqRunner executable or .dll. When empty, the portable .NET 10 or .NET 11 runner bundled with the extension is selected automatically."
+          "description": "Absolute path to a custom LinqRunner executable or .dll. When empty, the bundled portable runner is launched on a compatible .NET runtime selected automatically."
         },
         "linqRunner.rowLimit": {
           "type": "number",

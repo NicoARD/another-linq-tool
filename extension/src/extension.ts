@@ -83,7 +83,14 @@ async function provideCompletionItems(
     const prelude = profile?.prelude?.trim() ? `${profile.prelude}\n\n` : '';
     const source = prelude + parsed.body;
     const sourcePosition = prelude.length + document.offsetAt(position);
-    const runnerClient = await getClient(context, profile?.assemblies ?? [], profile?.targetFramework);
+    const runnerClient = await getClient(
+        context,
+        profile?.assemblies ?? [],
+        profile?.packages ?? [],
+        profile?.targetFramework,
+        profile?.efCoreVersion,
+        profile?.provider,
+    );
     const result = await runnerClient.complete(
         source,
         sourcePosition,
@@ -95,6 +102,7 @@ async function provideCompletionItems(
             provider: profile?.provider,
             contextFactoryType: profile?.contextFactoryType,
             contextFactoryMethod: profile?.contextFactoryMethod,
+            efCoreVersion: profile?.efCoreVersion,
         },
         Boolean(namespaceDirective || xmlNamespace),
         cancellationToken,
@@ -178,7 +186,10 @@ async function selectProfile(): Promise<void> {
 async function getClient(
     context: vscode.ExtensionContext,
     assemblies: readonly string[],
+    packages: readonly string[],
     targetFramework?: 'net10.0' | 'net11.0',
+    efCoreVersion?: string,
+    provider?: string,
 ): Promise<RunnerClient> {
     const config = vscode.workspace.getConfiguration('linqRunner');
     const dotnetPath = config.get<string>('dotnetPath', 'dotnet');
@@ -190,7 +201,16 @@ async function getClient(
             selectRunnerFramework(assemblies, targetFramework),
             (message) => output.appendLine(message),
         );
-    const launchKey = JSON.stringify([launch.executable, ...launch.args]);
+    const dependencyKey = fingerprintAssemblies(assemblies);
+    const launchKey = JSON.stringify([
+        launch.executable,
+        ...launch.args,
+        'framework' in launch ? launch.framework : 'custom',
+        dependencyKey,
+        [...packages].map((item) => item.trim().toLowerCase()).sort(),
+        efCoreVersion?.trim().toLowerCase() ?? 'auto',
+        provider?.trim().toLowerCase() ?? '',
+    ]);
     if (client && clientLaunchKey === launchKey) {
         return client;
     }
@@ -200,7 +220,13 @@ async function getClient(
     const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
     output.appendLine(`Using ${'framework' in launch ? launch.framework : 'custom'} runner.`);
-    client = new RunnerClient(launch.executable, launch.args, (message) => output.appendLine(message), cwd);
+    client = new RunnerClient(
+        launch.executable,
+        launch.args,
+        (message) => output.appendLine(message),
+        cwd,
+        launch.environment,
+    );
     clientLaunchKey = launchKey;
     context.subscriptions.push({ dispose: () => client?.dispose() });
     return client;
@@ -246,11 +272,46 @@ function parseProfileDirective(text: string): { profileName?: string; body: stri
     return { body: text };
 }
 
+function fingerprintAssemblies(assemblies: readonly string[]): (string | number)[][] {
+    const paths = new Set<string>();
+    for (const assembly of assemblies) {
+        const fullPath = path.resolve(assembly);
+        paths.add(fullPath);
+
+        const depsFile = fullPath.replace(/\.dll$/i, '.deps.json');
+        if (fs.existsSync(depsFile)) {
+            paths.add(depsFile);
+        }
+
+        const directory = path.dirname(fullPath);
+        try {
+            for (const sibling of fs.readdirSync(directory)) {
+                if (/^Microsoft\.EntityFrameworkCore.*\.dll$/i.test(sibling)) {
+                    paths.add(path.join(directory, sibling));
+                }
+            }
+        } catch {
+            // The primary path's missing-file fingerprint below will still force a safe relaunch.
+        }
+    }
+
+    return [...paths].map((file) => {
+        const identity = process.platform === 'win32' ? file.toLowerCase() : file;
+        try {
+            const stat = fs.statSync(file);
+            return [identity, stat.size, stat.mtimeMs];
+        } catch {
+            return [identity, 0, 0];
+        }
+    }).sort((left, right) => String(left[0]).localeCompare(String(right[0])));
+}
+
 interface RunnerLaunch {
     executable: string;
     args: string[];
     runnerPath: string;
     bundled: boolean;
+    environment?: NodeJS.ProcessEnv;
 }
 
 function prepareRunnerLaunch(launch: RunnerLaunch): void {
@@ -302,7 +363,10 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
                 const runnerClient = await getClient(
                     context,
                     profile?.assemblies ?? [],
+                    profile?.packages ?? [],
                     profile?.targetFramework,
+                    profile?.efCoreVersion,
+                    profile?.provider,
                 );
                 const result = await runnerClient.execute(
                     source,
@@ -316,6 +380,7 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
                         connectionString: profile?.connectionString,
                         contextFactoryType: profile?.contextFactoryType,
                         contextFactoryMethod: profile?.contextFactoryMethod,
+                        efCoreVersion: profile?.efCoreVersion,
                     },
                     cancellationToken,
                 );

@@ -185,7 +185,10 @@ function render() {
             '<option value="net10.0"' + (p.targetFramework === 'net10.0' ? ' selected' : '') + '>.NET 10 LTS</option>' +
             '<option value="net11.0"' + (p.targetFramework === 'net11.0' ? ' selected' : '') + '>.NET 11 (Preview)</option>' +
         '</select>' +
-        '<div class="muted">Automatic uses .NET 11 when a configured assembly targets net11.0; otherwise it uses .NET 10.</div>' +
+        '<div class="muted">Automatic uses .NET 10 by default and selects a newer runtime when a configured assembly requires it.</div>' +
+        '<label>EF Core version</label>' +
+        '<input type="text" id="efCoreVersion" value="' + escapeAttr(p.efCoreVersion || '') + '" placeholder="Automatic (for example, 8.0.19)" />' +
+        '<div class="muted">Leave blank to detect EF Core beside the application DLL. An explicit version is used when the provider must be restored.</div>' +
         '<fieldset><legend>Assemblies (DLLs)</legend>' + asmRows +
             '<div class="row"><button class="secondary" id="addAssembly">Add DLL…</button></div>' +
             '<div class="muted">Point at your application\\'s build output so EF Core and native deps are alongside the DLL.</div>' +
@@ -240,6 +243,7 @@ function wireEditor() {
     bind('imports', v => p.imports = v.split('\\n').map(s => s.trim()).filter(Boolean));
     bind('packages', v => p.packages = v.split('\\n').map(s => s.trim()).filter(Boolean));
     bind('prelude', v => p.prelude = v || undefined);
+    bind('efCoreVersion', v => p.efCoreVersion = v.trim() || undefined);
     const targetFramework = document.getElementById('targetFramework');
     if (targetFramework) targetFramework.onchange = e => {
         p.targetFramework = e.target.value === 'auto' ? undefined : e.target.value;

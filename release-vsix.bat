@@ -9,9 +9,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
-dotnet --list-sdks | findstr /B /C:"11." >nul
-if errorlevel 1 (
-    echo Error: The .NET 11 SDK is required to package the extension.
+for /f "tokens=1 delims=." %%V in ('dotnet --version') do set "DOTNET_SDK_MAJOR=%%V"
+if %DOTNET_SDK_MAJOR% LSS 8 (
+    echo Error: The .NET 8 SDK or newer is required to package the extension.
     exit /b 1
 )
 

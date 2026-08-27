@@ -57,6 +57,7 @@ public sealed class RunnerService
                 ConnectionString = parameters.ConnectionString,
                 FactoryType = parameters.ContextFactoryType,
                 FactoryMethod = parameters.ContextFactoryMethod,
+                EfCoreVersion = parameters.EfCoreVersion,
             },
             cancellationToken);
 
@@ -74,6 +75,7 @@ public sealed class RunnerService
                 Provider = parameters.Provider,
                 FactoryType = parameters.ContextFactoryType,
                 FactoryMethod = parameters.ContextFactoryMethod,
+                EfCoreVersion = parameters.EfCoreVersion,
             },
             parameters.NamespacesOnly,
             cancellationToken);
@@ -109,6 +111,7 @@ public sealed class ExecuteParams
     public string? ConnectionString { get; set; }
     public string? ContextFactoryType { get; set; }
     public string? ContextFactoryMethod { get; set; }
+    public string? EfCoreVersion { get; set; }
 }
 
 public sealed class CompleteParams
@@ -122,5 +125,6 @@ public sealed class CompleteParams
     public string? Provider { get; set; }
     public string? ContextFactoryType { get; set; }
     public string? ContextFactoryMethod { get; set; }
+    public string? EfCoreVersion { get; set; }
     public bool NamespacesOnly { get; set; }
 }

@@ -2,11 +2,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-export type RunnerFramework = 'net10.0' | 'net11.0';
+export type RunnerFramework = `net${number}.0`;
 
 export interface ManagedRunnerLaunch {
     executable: string;
     args: string[];
+    environment?: NodeJS.ProcessEnv;
     runnerPath: string;
     bundled: true;
     framework: RunnerFramework;
@@ -33,22 +34,17 @@ export function selectRunnerFramework(
         }
     }
 
-    if (highestMajor > 11) {
-        throw new Error(
-            `A configured assembly targets .NET ${highestMajor}, but this version supports assemblies through .NET 11.`,
-        );
-    }
-
     if (requested && requested !== 'auto') {
-        if (requested === 'net10.0' && highestMajor > 10) {
+        const requestedMajor = frameworkMajor(requested);
+        if (highestMajor > requestedMajor) {
             throw new Error(
-                'The active profile selects .NET 10, but one of its configured assemblies targets .NET 11.',
+                `The active profile selects .NET ${requestedMajor}, but a configured assembly targets .NET ${highestMajor}.`,
             );
         }
         return requested;
     }
 
-    return highestMajor === 11 ? 'net11.0' : 'net10.0';
+    return `net${highestMajor}.0`;
 }
 
 /** Resolves an existing compatible host first and acquires one only when necessary. */
@@ -57,7 +53,8 @@ export async function resolveManagedRunner(
     framework: RunnerFramework,
     log: (message: string) => void,
 ): Promise<ManagedRunnerLaunch> {
-    const version = framework === 'net11.0' ? '11.0' : '10.0';
+    const major = frameworkMajor(framework);
+    const version = `${major}.0`;
     const acquireContext = {
         version,
         mode: 'runtime',
@@ -71,7 +68,7 @@ export async function resolveManagedRunner(
         const found = await vscode.commands.executeCommand<DotnetPathResult>('dotnet.findPath', {
             acquireContext,
             versionSpecRequirement: 'equal',
-            rejectPreviews: framework === 'net10.0',
+            rejectPreviews: major <= 10,
         });
         dotnetPath = normalizeDotnetPath(found);
     } catch (err) {
@@ -92,14 +89,46 @@ export async function resolveManagedRunner(
         throw new Error(`The .NET Install Tool did not return a path for the .NET ${version} runtime.`);
     }
 
-    const runnerPath = path.join(context.extensionPath, 'runner', framework, 'LinqRunner.dll');
+    const runnerPath = path.join(context.extensionPath, 'runner', 'net8.0', 'LinqRunner.dll');
+    const runtimeConfig = createRuntimeConfig(context, framework, major);
     return {
         executable: dotnetPath,
-        args: [runnerPath],
+        args: ['exec', '--runtimeconfig', runtimeConfig, runnerPath],
+        environment: major > 10 ? { ...process.env, DOTNET_ROLL_FORWARD_TO_PRERELEASE: '1' } : undefined,
         runnerPath,
         bundled: true,
         framework,
     };
+}
+
+function createRuntimeConfig(context: vscode.ExtensionContext, framework: RunnerFramework, major: number): string {
+    const directory = path.join(context.globalStorageUri.fsPath, 'runtime');
+    fs.mkdirSync(directory, { recursive: true });
+    const runtimeConfig = path.join(directory, `LinqRunner.${framework}.runtimeconfig.json`);
+    const contents = JSON.stringify({
+        runtimeOptions: {
+            tfm: framework,
+            rollForward: 'LatestPatch',
+            framework: {
+                name: 'Microsoft.NETCore.App',
+                // A preview baseline rolls forward to both later previews and the eventual stable
+                // release. Stable runtime lines use their normal 0.0 baseline.
+                version: major > 10 ? `${major}.0.0-preview.1` : `${major}.0.0`,
+            },
+        },
+    }, null, 2) + '\n';
+    if (!fs.existsSync(runtimeConfig) || fs.readFileSync(runtimeConfig, 'utf8') !== contents) {
+        fs.writeFileSync(runtimeConfig, contents, 'utf8');
+    }
+    return runtimeConfig;
+}
+
+function frameworkMajor(framework: RunnerFramework): number {
+    const match = /^net(\d+)\.0$/.exec(framework);
+    if (!match) {
+        throw new Error(`Unsupported .NET target framework '${framework}'.`);
+    }
+    return Number.parseInt(match[1], 10);
 }
 
 function readTargetFrameworkMajor(assemblyPath: string): number | undefined {

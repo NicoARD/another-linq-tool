@@ -11,6 +11,7 @@ public sealed class DbContextRequest
     public string? ConnectionString { get; init; }
     public string? FactoryType { get; init; }        // optional custom factory type
     public string? FactoryMethod { get; init; }      // factory method name (default "Create")
+    public string? EfCoreVersion { get; init; }      // optional profile override for provider resolution
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(Context) || !string.IsNullOrWhiteSpace(FactoryType);

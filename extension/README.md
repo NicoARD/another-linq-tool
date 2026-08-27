@@ -8,7 +8,7 @@ The final expression is displayed automatically, and `Dump()` can display interm
 
 Another LINQ Tool lets scripts use your existing compiled application code. Add your DLLs to an execution profile, import their namespaces, and use their public types, methods, extension methods, and business logic directly from a script. 
 
-Thanks to .NET's backward compatibility, assemblies targeting compatible earlier .NET versions can generally run on the bundled .NET 10 or .NET 11 runner. Assemblies that depend on .NET Framework-only APIs or otherwise incompatible runtimes may not load.
+Thanks to .NET's backward compatibility, assemblies targeting compatible earlier versions can generally run when the portable runner is launched on a newer runtime. Assemblies that depend on .NET Framework-only APIs or otherwise incompatible runtimes may not load.
 
 Profiles can also configure an Entity Framework Core `DbContext`. The configured context is made available as `Db`, so scripts can use your application's data model without repeatedly setting up references and database access.
 
@@ -26,7 +26,7 @@ This provides an interactive query window backed by your actual application code
 ## Features
 
 - Run `.linq` and `.csx` files with <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or the editor play button.
-- Reference and use your own compiled .NET assemblies, generally including compatible assemblies targeting earlier .NET versions through .NET 10 or .NET 11.
+- Reference and use your own compiled .NET assemblies, including compatible earlier versions and newer runtimes detected from assembly metadata.
 - Configure an EF Core `DbContext` and access it as `Db`.
 - Get profile-aware C# autocomplete from profile preludes, imported namespaces, referenced DLLs, NuGet packages, and the configured `DbContext`.
 - Group assemblies, imported namespaces, NuGet packages, setup code, and database configuration into reusable profiles.
@@ -35,7 +35,7 @@ This provides an interactive query window backed by your actual application code
 - Run asynchronous C# and EF Core queries with `async` and `await`.
 - Partially run LINQPad query files: C# `Expression`, `Statements`, and `Program` queries are supported, but LINQPad profiles are not imported and database connections configured in LINQPad cannot be used.
 - Choose a profile globally or override it for an individual script with `@profile`.
-- Use automatically managed .NET 10 and .NET 11 runtimes.
+- Use automatically managed .NET runtimes with .NET 10 LTS as the default.
 
 <details>
 <summary><strong>Requirements</strong></summary>
@@ -43,9 +43,9 @@ This provides an interactive query window backed by your actual application code
 
 - VS Code 1.85 or newer
 
-The extension includes portable .NET 10 and .NET 11 runners and depends on Microsoft's .NET Install Tool. It reuses an existing compatible runtime when available and otherwise downloads the runtime for the current system. Users do not need to install .NET manually, but the first run may require a network connection.
+The extension includes one portable roll-forward runner and depends on Microsoft's .NET Install Tool. It reuses an existing compatible runtime when available and otherwise downloads the runtime for the current system. Users do not need to install .NET manually, but the first run may require a network connection.
 
-.NET 10 LTS is used by default. When a configured profile assembly targets `net11.0`, the extension detects its target-framework metadata and selects the .NET 11 runner for that execution. Assemblies targeting a framework newer than .NET 11 are rejected with a clear compatibility error.
+.NET 10 LTS is used by default. When a configured profile assembly targets a newer framework, the extension detects its target-framework metadata and launches the same bundled runner on that compatible runtime. A future runtime can therefore be selected without shipping another target-specific runner build.
 
 </details>
 
@@ -132,7 +132,9 @@ Profiles group the assemblies, namespaces, NuGet packages, and optional database
 
 The profile editor can import and export JSON profile files. Exported files may include connection strings; store them securely and do not commit them.
 
-Each profile has a **.NET runtime** selector. **Automatic** uses .NET 10 unless a configured assembly targets `net11.0`; choose **.NET 11** explicitly for scripts or packages that need .NET 11 even when no referenced DLL exposes that requirement. Choosing .NET 10 for a profile containing a `net11.0` assembly produces a compatibility error instead of starting an incompatible runner.
+Each profile has a **.NET runtime** selector. **Automatic** uses .NET 10 unless a configured assembly targets a newer runtime; choose an explicit runtime for scripts or packages whose requirement is not exposed by a referenced DLL. Selecting a runtime older than a configured assembly produces a compatibility error.
+
+Database profiles also have an optional **EF Core version**. Leave it blank to detect the version published beside the application assembly. Set an exact version such as `8.0.19` when the provider is not part of the application output and must be restored. The extension automatically starts a clean runner when the runtime, assemblies, packages, provider, or EF version changes.
 
 Connection strings saved through the editor are held in VS Code Secret Storage. Profile names and other non-secret values are stored in the global `linqRunner.*` user settings.
 
@@ -166,7 +168,7 @@ Open **Another LINQ Tool: Open Settings** from the Command Palette, or edit VS C
 | Setting | Default | Purpose |
 | --- | --- | --- |
 | `linqRunner.dotnetPath` | `dotnet` | Path or command used when a custom `.dll` is selected as the runner. |
-| `linqRunner.runnerPath` | empty | Absolute path to a custom runner executable or `.dll`. Leave empty to select the bundled .NET 10 or .NET 11 runner automatically. |
+| `linqRunner.runnerPath` | empty | Absolute path to a custom runner executable or `.dll`. Leave empty to launch the bundled portable runner on an automatically selected runtime. |
 | `linqRunner.rowLimit` | `1000` | Maximum number of items shown for sequence results. |
 | `linqRunner.profiles` | `{}` | Named profiles. Prefer the profile editor over manual changes. |
 | `linqRunner.defaultProfile` | empty | Profile selected when no explicit active profile has been chosen. |
@@ -179,6 +181,7 @@ Example non-secret profile settings:
   "linqRunner.profiles": {
     "testmodel": {
       "targetFramework": "net10.0",
+      "efCoreVersion": "9.0.19",
       "assemblies": [
         "C:\\code\\projects\\TestModel\\bin\\Debug\\net9.0\\TestModel.dll"
       ],
@@ -226,7 +229,8 @@ Build the assembly containing the context before running. The extension reports 
 - **`Microsoft.Data.SqlClient is not supported on this platform`:** rebuild the referenced project so its `runtimes` directory and `.deps.json` are present beside the assembly, then restart the runner. The extension selects the matching RID-specific SqlClient implementation rather than its unsupported root facade.
 - **Missing types or namespaces:** select the correct profile and add the required assembly and import.
 - **Missing profile assembly:** build the referenced project and update the assembly path if its output location changed.
-- **A NuGet-enabled profile cannot restore:** install the SDK matching the selected runner (.NET 10 normally, or .NET 11 for a `net11.0` assembly). Runtime acquisition installs a runtime, not an SDK.
+- **A NuGet-enabled profile cannot restore:** install an SDK capable of targeting the selected execution runtime. Runtime acquisition installs a runtime, not an SDK.
+- **An EF Core profile reports incompatible versions:** leave **EF Core version** on Automatic when the provider is published beside the application, or select the exact EF version used to build the `DbContext`. The runner will not combine providers from different EF major versions.
 - **A script or package fails:** open the **Another LINQ Tool** output channel for runner diagnostics.
 
 </details>

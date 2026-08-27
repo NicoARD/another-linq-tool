@@ -9,9 +9,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
-dotnet --list-sdks | findstr /B /C:"11." >nul
-if errorlevel 1 (
-    echo Error: The .NET 11 SDK is required to build the runner.
+for /f "tokens=1 delims=." %%V in ('dotnet --version') do set "DOTNET_SDK_MAJOR=%%V"
+if %DOTNET_SDK_MAJOR% LSS 8 (
+    echo Error: The .NET 8 SDK or newer is required to build the runner.
     exit /b 1
 )
 
@@ -38,7 +38,7 @@ if not exist "extension\node_modules" (
     exit /b 1
 )
 
-echo Publishing portable .NET 10 and .NET 11 runners...
+echo Publishing the portable roll-forward runner...
 pushd "extension"
 call npm run build:runner
 if errorlevel 1 goto :failed
