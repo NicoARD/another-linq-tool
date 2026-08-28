@@ -34,6 +34,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.commands.registerCommand('linqRunner.runCurrentFile', () => runCurrentFile(context)),
         vscode.commands.registerCommand('linqRunner.restartRunner', () => restartRunner()),
         vscode.commands.registerCommand('linqRunner.selectProfile', () => selectProfile()),
+        vscode.commands.registerCommand('linqRunner.newLinqFile', (resource?: vscode.Uri) =>
+            createLinqFile(resource)),
         vscode.commands.registerCommand('linqRunner.configure', () =>
             ConfigPanel.show(context, profiles, () => updateStatusBar())),
         vscode.commands.registerCommand('linqRunner.openGlobalProfiles', () =>
@@ -52,6 +54,54 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             '.', '@', ' ',
         ),
     );
+}
+
+async function createLinqFile(resource?: vscode.Uri): Promise<void> {
+    const extension = '.linq';
+    const defaultName = 'Untitled.linq';
+    let directory = vscode.workspace.workspaceFolders?.[0]?.uri;
+    if (resource) {
+        try {
+            const stat = await vscode.workspace.fs.stat(resource);
+            directory = stat.type === vscode.FileType.Directory
+                ? resource
+                : vscode.Uri.joinPath(resource, '..');
+        } catch {
+            directory = vscode.Uri.joinPath(resource, '..');
+        }
+    }
+
+    const baseName = path.basename(defaultName, extension);
+    let untitled: vscode.Uri;
+    for (let suffix = 1; ; suffix++) {
+        const name = suffix === 1 ? defaultName : `${baseName} ${suffix}${extension}`;
+        const prospective = directory
+            ? vscode.Uri.joinPath(directory, name)
+            : vscode.Uri.parse(`untitled:${name}`);
+        untitled = prospective.scheme === 'untitled'
+            ? prospective
+            : prospective.with({ scheme: 'untitled' });
+
+        const alreadyOpen = vscode.workspace.textDocuments.some(
+            (document) => document.uri.toString() === untitled.toString(),
+        );
+        let alreadyExists = false;
+        if (directory) {
+            try {
+                await vscode.workspace.fs.stat(prospective);
+                alreadyExists = true;
+            } catch {
+                // An unused prospective filename is what we are looking for.
+            }
+        }
+        if (!alreadyOpen && !alreadyExists) {
+            break;
+        }
+    }
+
+    const document = await vscode.workspace.openTextDocument(untitled);
+    await vscode.languages.setTextDocumentLanguage(document, 'linq-csx');
+    await vscode.window.showTextDocument(document);
 }
 
 async function provideCompletionItems(

@@ -27,6 +27,7 @@ This provides an interactive query window backed by your actual application code
 
 ## Features
 
+- Create a `.linq` C#/LINQ script from VS Code's **New File** picker, the Command Palette, or Explorer context menu. It opens as an untitled editor and can run without being saved first. Existing `.csx` files remain supported interchangeably.
 - Run C# scripts (`.linq` and `.csx` files) with <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or the editor play button.
 - Reference and use your own compiled .NET assemblies, including compatible earlier versions and newer runtimes detected from assembly metadata.
 - Configure an EF Core `DbContext` and access it as `Db`.

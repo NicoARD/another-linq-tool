@@ -3,7 +3,7 @@
   "displayName": "Another LINQ Tool",
   "description": "Run C# scripts as interactive LINQ query windows.",
   "icon": "./icon.png",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "publisher": "N-Tsoulos",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
@@ -46,20 +46,26 @@
     "onCommand:linqRunner.restartRunner",
     "onCommand:linqRunner.selectProfile",
     "onCommand:linqRunner.configure",
-    "onCommand:linqRunner.openGlobalProfiles"
+    "onCommand:linqRunner.openGlobalProfiles",
+    "onCommand:linqRunner.newLinqFile"
   ],
   "contributes": {
     "languages": [
       {
         "id": "linq-csx",
         "aliases": [
+          "C# Script",
           "LINQ C# Script"
         ],
         "extensions": [
           ".linq",
           ".csx"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/csharp-script.svg",
+          "dark": "./icons/csharp-script.svg"
+        }
       }
     ],
     "grammars": [
@@ -98,6 +104,12 @@
       {
         "command": "linqRunner.openGlobalProfiles",
         "title": "Another LINQ Tool: Configure Global Profiles"
+      },
+      {
+        "command": "linqRunner.newLinqFile",
+        "title": ".linq",
+        "category": "C#/LINQ script",
+        "icon": "$(new-file)"
       }
     ],
     "menus": {
@@ -111,6 +123,17 @@
           "command": "linqRunner.configure",
           "when": "resourceExtname == .linq || resourceExtname == .csx",
           "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "linqRunner.newLinqFile",
+          "group": "navigation@90"
+        }
+      ],
+      "file/newFile": [
+        {
+          "command": "linqRunner.newLinqFile"
         }
       ]
     },
