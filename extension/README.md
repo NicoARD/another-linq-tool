@@ -241,6 +241,6 @@ Build the assembly containing the context before running. The extension reports 
 <summary><strong>License</strong></summary>
 
 
-The extension is covered by the [CC BY-NC 4.0 license](LICENSE): free to use, modify, and fork non-commercially; not permitted for sale or other commercial use.
+The extension is licensed under the [PolyForm Internal Use License 1.0.0](LICENSE).
 
 </details>

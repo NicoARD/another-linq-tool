@@ -80,4 +80,4 @@ Scripts are arbitrary C# code and run with your user permissions. Only run scrip
 
 ## License
 
-This project is licensed under [CC BY-NC 4.0](LICENSE). You may use, copy, modify, and fork it for non-commercial purposes, with attribution. Commercial use, sale, and monetization are not permitted.
+This project is licensed under the [PolyForm Internal Use License 1.0.0](LICENSE).
