@@ -76,6 +76,7 @@ export class ConfigPanel {
                     await profiles.saveConfig(message.config as ProfilesConfigFile);
                     onSaved();
                     panel.webview.postMessage({ type: 'saved' });
+                    vscode.window.showInformationMessage('Another LINQ Tool: profile settings saved.');
                     break;
                 }
             }
