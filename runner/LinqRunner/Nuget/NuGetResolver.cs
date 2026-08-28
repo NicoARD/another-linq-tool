@@ -12,6 +12,8 @@ namespace LinqRunner.Nuget;
 /// </summary>
 public static class NuGetResolver
 {
+    private const string CacheFormatVersion = "1";
+    private const string CacheMarkerName = ".linqrunner-cache";
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly Dictionary<string, string> OutputByKey = new(StringComparer.Ordinal);
 
@@ -55,6 +57,21 @@ public static class NuGetResolver
     {
         var projectDir = Path.Combine(Path.GetTempPath(), "linqrunner-nuget", ShortHash(key));
         Directory.CreateDirectory(projectDir);
+        var outputDir = Path.Combine(projectDir, "bin", "Release", targetFramework);
+        var cacheMarker = Path.Combine(projectDir, CacheMarkerName);
+        var cacheIdentity = CacheFormatVersion + Environment.NewLine + key;
+        var reuseAcrossProcesses = CanReuseAcrossProcesses(packages);
+
+        // Exact package versions have stable restore semantics, so a completed output can safely be
+        // reused by a newly started runner. Floating/range versions still build once per process so
+        // they retain their existing opportunity to resolve a newer package version.
+        if (reuseAcrossProcesses
+            && File.Exists(Path.Combine(outputDir, "LinqPackages.dll"))
+            && File.Exists(cacheMarker)
+            && string.Equals(await File.ReadAllTextAsync(cacheMarker, cancellationToken), cacheIdentity, StringComparison.Ordinal))
+        {
+            return outputDir;
+        }
 
         var references = string.Join(
             Environment.NewLine,
@@ -98,7 +115,21 @@ public static class NuGetResolver
                 "Package restore failed:" + Environment.NewLine + stdout + stderr);
         }
 
-        return Path.Combine(projectDir, "bin", "Release", targetFramework);
+        if (reuseAcrossProcesses)
+        {
+            var temporaryMarker = cacheMarker + $".{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
+            try
+            {
+                await File.WriteAllTextAsync(temporaryMarker, cacheIdentity, cancellationToken);
+                File.Move(temporaryMarker, cacheMarker, overwrite: true);
+            }
+            finally
+            {
+                File.Delete(temporaryMarker);
+            }
+        }
+
+        return outputDir;
     }
 
     private static string ToPackageReference(string package)
@@ -111,6 +142,26 @@ public static class NuGetResolver
     {
         var (id, version) = ParsePackage(package);
         return $"{id}@{version}";
+    }
+
+    private static bool CanReuseAcrossProcesses(IReadOnlyList<string> packages) =>
+        packages.All(package => IsExactVersion(ParsePackage(package).Version));
+
+    private static bool IsExactVersion(string version)
+    {
+        var coreAndMetadata = version.Split('+', 2);
+        var releaseAndPrerelease = coreAndMetadata[0].Split('-', 2);
+        var numericParts = releaseAndPrerelease[0].Split('.');
+        if (numericParts.Length is < 2 or > 4 || numericParts.Any(part => !int.TryParse(part, out _)))
+        {
+            return false;
+        }
+
+        static bool IsLabel(string value) => value.Length > 0
+            && value.Split('.').All(part => part.Length > 0 && part.All(ch => char.IsAsciiLetterOrDigit(ch) || ch == '-'));
+
+        return (releaseAndPrerelease.Length == 1 || IsLabel(releaseAndPrerelease[1]))
+            && (coreAndMetadata.Length == 1 || IsLabel(coreAndMetadata[1]));
     }
 
     // "Dapper@2.1.66" | "Dapper" | "Humanizer@2.x" -> (id, floatable version)

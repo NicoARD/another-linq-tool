@@ -20,6 +20,7 @@ interface DotnetAcquireResult {
 type DotnetPathResult = string | DotnetAcquireResult | undefined;
 
 const targetFrameworkMarker = Buffer.from('.NETCoreApp,Version=v', 'ascii');
+const managedRunnerLaunches = new Map<string, Promise<ManagedRunnerLaunch>>();
 
 /** Selects the newest runner required by the profile's managed assembly references. */
 export function selectRunnerFramework(
@@ -49,6 +50,35 @@ export function selectRunnerFramework(
 
 /** Resolves an existing compatible host first and acquires one only when necessary. */
 export async function resolveManagedRunner(
+    context: vscode.ExtensionContext,
+    framework: RunnerFramework,
+    log: (message: string) => void,
+): Promise<ManagedRunnerLaunch> {
+    const cacheKey = JSON.stringify([
+        context.extensionPath,
+        context.globalStorageUri.fsPath,
+        process.arch,
+        framework,
+    ]);
+    const cached = managedRunnerLaunches.get(cacheKey);
+    if (cached) {
+        return cached;
+    }
+
+    const pending = resolveManagedRunnerCore(context, framework, log);
+    managedRunnerLaunches.set(cacheKey, pending);
+    try {
+        return await pending;
+    } catch (err) {
+        // Runtime installation/search failures may be transient, so allow the next request to retry.
+        if (managedRunnerLaunches.get(cacheKey) === pending) {
+            managedRunnerLaunches.delete(cacheKey);
+        }
+        throw err;
+    }
+}
+
+async function resolveManagedRunnerCore(
     context: vscode.ExtensionContext,
     framework: RunnerFramework,
     log: (message: string) => void,

@@ -6,6 +6,7 @@ All notable changes to Another LINQ Tool are documented in this file.
 
 - Add a `.linq (C#/LINQ script)` New File entry that opens a runnable untitled script without requiring a save; existing `.csx` files remain supported.
 - Add a shared C# Script file icon for `.linq` and `.csx` files.
+- Improve cold-start performance by reusing .NET runtime discovery, NuGet outputs, and assembly metadata.
 
 ## 1.2.1
 

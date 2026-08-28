@@ -29,6 +29,10 @@ public static class UserAssemblyLoader
     // absolute path -> already-loaded assembly, so repeated executions reuse one instance.
     private static readonly Dictionary<string, Assembly> LoadedByPath = new(StringComparer.OrdinalIgnoreCase);
 
+    // absolute path -> Roslyn reference for the current file contents. Creating a reference from an
+    // image reads and retains the whole DLL, so reuse it until the file's inexpensive stamp changes.
+    private static readonly Dictionary<string, MetadataCacheEntry> MetadataByPath = new(StringComparer.OrdinalIgnoreCase);
+
     // directories the configured assemblies live in, used to probe managed + native dependencies.
     private static readonly HashSet<string> ProbeDirectories = new(StringComparer.OrdinalIgnoreCase);
 
@@ -104,16 +108,16 @@ public static class UserAssemblyLoader
 
             foreach (var path in fullPaths)
             {
-                var bytes = File.ReadAllBytes(path);
-
                 if (!LoadedByPath.TryGetValue(path, out var assembly))
                 {
+                    var bytes = File.ReadAllBytes(path);
                     assembly = AssemblyLoadContext.Default.LoadFromStream(new MemoryStream(bytes));
                     LoadedByPath[path] = assembly;
+                    MetadataByPath[path] = CreateMetadataEntry(path, bytes);
                 }
 
                 result.Assemblies.Add(assembly);
-                result.References.Add(MetadataReference.CreateFromImage(bytes));
+                result.References.Add(GetMetadataReference(path));
             }
 
             // Also reference sibling DLLs that are NOT part of the shared framework (e.g. EF Core, the
@@ -134,7 +138,7 @@ public static class UserAssemblyLoader
 
                 try
                 {
-                    result.References.Add(MetadataReference.CreateFromImage(File.ReadAllBytes(path)));
+                    result.References.Add(GetMetadataReference(path));
                     referencedPaths.Add(path);
                 }
                 catch
@@ -369,6 +373,35 @@ public static class UserAssemblyLoader
             yield return "unix";
         }
     }
+
+    private static MetadataReference GetMetadataReference(string path)
+    {
+        var info = new FileInfo(path);
+        if (MetadataByPath.TryGetValue(path, out var cached)
+            && cached.Length == info.Length
+            && cached.LastWriteTimeUtc == info.LastWriteTimeUtc)
+        {
+            return cached.Reference;
+        }
+
+        var entry = CreateMetadataEntry(path, File.ReadAllBytes(path));
+        MetadataByPath[path] = entry;
+        return entry.Reference;
+    }
+
+    private static MetadataCacheEntry CreateMetadataEntry(string path, byte[] bytes)
+    {
+        var info = new FileInfo(path);
+        return new MetadataCacheEntry(
+            info.Length,
+            info.LastWriteTimeUtc,
+            MetadataReference.CreateFromImage(bytes));
+    }
+
+    private sealed record MetadataCacheEntry(
+        long Length,
+        DateTime LastWriteTimeUtc,
+        MetadataReference Reference);
 
     private static int RuntimeAssetScore(string path)
     {
