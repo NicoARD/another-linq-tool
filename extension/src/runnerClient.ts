@@ -122,6 +122,7 @@ export class RunnerClient {
         packages: string[],
         db: DbOptions,
         cancellationToken?: CancellationToken,
+        debug?: { sourcePath: string; sourceOffset: number; sourceChecksum: string },
     ): Promise<ExecuteResult> {
         await this.ensureStarted();
         let forcedStop: NodeJS.Timeout | undefined;
@@ -137,7 +138,17 @@ export class RunnerClient {
         try {
             return await this.connection!.sendRequest<ExecuteResult>(
                 'execute',
-                { source, rowLimit, assemblies, imports, packages, ...db },
+                {
+                    source,
+                    rowLimit,
+                    assemblies,
+                    imports,
+                    packages,
+                    ...db,
+                    debugSourcePath: debug?.sourcePath,
+                    debugSourceOffset: debug?.sourceOffset,
+                    debugSourceChecksum: debug?.sourceChecksum,
+                },
                 cancellationToken,
             );
         } finally {
@@ -169,6 +180,15 @@ export class RunnerClient {
     async restart(): Promise<void> {
         this.dispose();
         await this.ensureStarted();
+    }
+
+    async processId(): Promise<number> {
+        await this.ensureStarted();
+        const processId = this.proc?.pid;
+        if (!processId) {
+            throw new Error('Runner process did not provide a process ID.');
+        }
+        return processId;
     }
 
     dispose(): void {

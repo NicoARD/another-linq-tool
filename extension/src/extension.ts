@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { createHash } from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { RunnerClient } from './runnerClient';
@@ -32,6 +33,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     context.subscriptions.push(
         vscode.commands.registerCommand('linqRunner.runCurrentFile', () => runCurrentFile(context)),
+        vscode.commands.registerCommand('linqRunner.debugCurrentFile', () => debugCurrentFile(context)),
         vscode.commands.registerCommand('linqRunner.restartRunner', () => restartRunner()),
         vscode.commands.registerCommand('linqRunner.selectProfile', () => selectProfile()),
         vscode.commands.registerCommand('linqRunner.newLinqFile', (resource?: vscode.Uri) =>
@@ -446,6 +448,85 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
             }
         },
     );
+}
+
+async function debugCurrentFile(context: vscode.ExtensionContext): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        vscode.window.showWarningMessage('Another LINQ Tool: no active editor.');
+        return;
+    }
+    const rowLimit = vscode.workspace.getConfiguration('linqRunner').get<number>('rowLimit', 1000);
+    const title = path.basename(editor.document.fileName);
+    const documentText = editor.document.getText();
+    const { profileName, body } = parseProfileDirective(documentText);
+    const profile = await profiles.resolveActive(profileName);
+    if (profileName && profile?.name !== profileName) {
+        vscode.window.showWarningMessage(
+            `Another LINQ Tool: profile "${profileName}" from the @profile directive was not found. Using "${profile?.name ?? 'no profile'}".`,
+        );
+    }
+
+    const prelude = profile?.prelude?.trim() ? `${profile.prelude}\n\n` : '';
+    const source = prelude + body;
+    let debugSession: vscode.DebugSession | undefined;
+    try {
+        const runnerClient = await getClient(
+            context,
+            profile?.assemblies ?? [],
+            profile?.packages ?? [],
+            profile?.targetFramework,
+            profile?.efCoreVersion,
+            profile?.provider,
+        );
+        const processId = await runnerClient.processId();
+        const started = await vscode.debug.startDebugging(undefined, {
+            type: 'coreclr',
+            name: `Debug ${title}`,
+            request: 'attach',
+            processId: String(processId),
+            justMyCode: false,
+            requireExactSource: false,
+        });
+        if (!started) {
+            throw new Error('The .NET debugger could not attach to the runner.');
+        }
+
+        debugSession = vscode.debug.activeDebugSession;
+        const result = await vscode.window.withProgress(
+            { location: vscode.ProgressLocation.Notification, title: 'Debugging script…', cancellable: true },
+            (_progress, cancellationToken) => runnerClient.execute(
+                source,
+                rowLimit,
+                profile?.assemblies ?? [],
+                profile?.imports ?? [],
+                profile?.packages ?? [],
+                {
+                    context: profile?.context,
+                    provider: profile?.provider,
+                    connectionString: profile?.connectionString,
+                    contextFactoryType: profile?.contextFactoryType,
+                    contextFactoryMethod: profile?.contextFactoryMethod,
+                    efCoreVersion: profile?.efCoreVersion,
+                },
+                cancellationToken,
+                {
+                    sourcePath: editor.document.fileName,
+                    sourceOffset: prelude.length,
+                    sourceChecksum: createHash('sha256').update(documentText, 'utf8').digest('hex'),
+                },
+            ),
+        );
+        ResultPanel.show(result, title);
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        output.appendLine(`Debugging failed: ${message}`);
+        vscode.window.showErrorMessage(`Another LINQ Tool: debugging failed. ${message}`);
+    } finally {
+        if (debugSession?.type === 'coreclr' && debugSession.name === `Debug ${title}`) {
+            await vscode.debug.stopDebugging(debugSession);
+        }
+    }
 }
 
 async function restartRunner(): Promise<void> {

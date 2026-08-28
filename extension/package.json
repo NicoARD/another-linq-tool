@@ -32,7 +32,8 @@
     "workspace"
   ],
   "extensionDependencies": [
-    "ms-dotnettools.vscode-dotnet-runtime"
+    "ms-dotnettools.vscode-dotnet-runtime",
+    "ms-dotnettools.csharp"
   ],
   "x-dotnet-acquire": {
     "version": "10.0",
@@ -43,6 +44,7 @@
     "onStartupFinished",
     "onLanguage:linq-csx",
     "onCommand:linqRunner.runCurrentFile",
+    "onCommand:linqRunner.debugCurrentFile",
     "onCommand:linqRunner.restartRunner",
     "onCommand:linqRunner.selectProfile",
     "onCommand:linqRunner.configure",
@@ -75,6 +77,11 @@
         "path": "./syntaxes/linq-csx.tmLanguage.json"
       }
     ],
+    "breakpoints": [
+      {
+        "language": "linq-csx"
+      }
+    ],
     "keybindings": [
       {
         "command": "linqRunner.runCurrentFile",
@@ -85,6 +92,11 @@
         "command": "linqRunner.runCurrentFile",
         "key": "alt+x",
         "when": "editorTextFocus && (resourceExtname == .linq || resourceExtname == .csx)"
+      },
+      {
+        "command": "linqRunner.debugCurrentFile",
+        "key": "f5",
+        "when": "editorTextFocus && !inDebugMode && (resourceExtname == .linq || resourceExtname == .csx)"
       }
     ],
     "commands": [
@@ -92,6 +104,11 @@
         "command": "linqRunner.runCurrentFile",
         "title": "Another LINQ Tool: Run Current File",
         "icon": "$(play)"
+      },
+      {
+        "command": "linqRunner.debugCurrentFile",
+        "title": "Another LINQ Tool: Debug Current File",
+        "icon": "$(debug-alt)"
       },
       {
         "command": "linqRunner.restartRunner",
@@ -122,6 +139,11 @@
         {
           "command": "linqRunner.runCurrentFile",
           "when": "resourceExtname == .linq || resourceExtname == .csx",
+          "group": "navigation"
+        },
+        {
+          "command": "linqRunner.debugCurrentFile",
+          "when": "!inDebugMode && (resourceExtname == .linq || resourceExtname == .csx)",
           "group": "navigation"
         },
         {

@@ -59,7 +59,10 @@ public sealed class RunnerService
                 FactoryMethod = parameters.ContextFactoryMethod,
                 EfCoreVersion = parameters.EfCoreVersion,
             },
-            cancellationToken);
+            cancellationToken,
+            parameters.DebugSourcePath,
+            parameters.DebugSourceOffset,
+            parameters.DebugSourceChecksum);
 
     [JsonRpcMethod("complete", UseSingleObjectParameterDeserialization = true)]
     public Task<CompletionResult> Complete(CompleteParams parameters, CancellationToken cancellationToken) =>
@@ -112,6 +115,9 @@ public sealed class ExecuteParams
     public string? ContextFactoryType { get; set; }
     public string? ContextFactoryMethod { get; set; }
     public string? EfCoreVersion { get; set; }
+    public string? DebugSourcePath { get; set; }
+    public int DebugSourceOffset { get; set; }
+    public string? DebugSourceChecksum { get; set; }
 }
 
 public sealed class CompleteParams

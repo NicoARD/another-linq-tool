@@ -1,6 +1,6 @@
 # Another LINQ Tool for VS Code
 
-Run C# and LINQ scripts interactively inside VS Code. Open a `.linq` or `.csx` file, write ordinary C#, and press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to execute it locally and inspect the result.
+Run and debug C# and LINQ scripts interactively inside VS Code. Open a `.linq` or `.csx` file, write ordinary C#, and press <kbd>Shift</kbd>+<kbd>Enter</kbd> to execute it locally and inspect the result.
 
 The final expression is displayed automatically, and `Dump()` can display intermediate or multiple values. Results appear in an interactive panel where nested objects and collections can be expanded.
 
@@ -28,7 +28,8 @@ This provides an interactive query window backed by your actual application code
 ## Features
 
 - Create a `.linq` C#/LINQ script from VS Code's **New File** picker, the Command Palette, or Explorer context menu. It opens as an untitled editor and can run without being saved first. Existing `.csx` files remain supported interchangeably.
-- Run C# scripts (`.linq` and `.csx` files) with <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or the editor play button.
+- Run C# scripts (`.linq` and `.csx` files) with <kbd>Shift</kbd>+<kbd>Enter</kbd> or the editor play button.
+- Set breakpoints and press <kbd>F5</kbd> (or select the editor debug button) to step through a script and inspect its variables. Unsaved and modified scripts are debugged directly from their current editor contents. Debug runs use the same profile and result panel as normal runs.
 - Reference and use your own compiled .NET assemblies, including compatible earlier versions and newer runtimes detected from assembly metadata.
 - Configure an EF Core `DbContext` and access it as `Db`.
 - Get profile-aware C# autocomplete from profile preludes, imported namespaces, referenced DLLs, NuGet packages, and the configured `DbContext`.
@@ -57,7 +58,7 @@ The extension includes one portable roll-forward runner and depends on Microsoft
 
 
 1. Open a `.linq` or `.csx` file in VS Code.
-2. Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, select the play button in the editor title bar, or run **Another LINQ Tool: Run Current File** from the Command Palette.
+2. Press <kbd>Shift</kbd>+<kbd>Enter</kbd>, select the play button in the editor title bar, or run **Another LINQ Tool: Run Current File** from the Command Palette.
 3. Review the result panel. The final expression is displayed when it has no trailing semicolon; `Dump()` calls display intermediate values.
 
 Nested objects and collections in results and `Dump()` output are expandable. Use the disclosure arrows, or focus them and press <kbd>Enter</kbd> or <kbd>Space</kbd>, to navigate into lists and object properties.
@@ -216,6 +217,7 @@ Build the assembly containing the context before running. The extension reports 
 | Command | Description |
 | --- | --- |
 | **Another LINQ Tool: Run Current File** | Execute the active script. |
+| **Another LINQ Tool: Debug Current File** | Attach the .NET debugger and execute the active script, including unsaved changes. |
 | **Another LINQ Tool: Restart Runner** | Stop and start the local runner process. |
 | **Another LINQ Tool: Select Profile** | Change the active execution profile. |
 | **Another LINQ Tool: Configure Profiles** | Open the profile editor. |

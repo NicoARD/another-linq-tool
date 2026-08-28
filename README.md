@@ -1,6 +1,6 @@
 # Another LINQ Tool
 
-Another LINQ Tool is a VS Code extension and .NET runner for executing C# LINQ scripts. Open a `.linq` or `.csx` file, run it with <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, and inspect the final value (and any `Dump()` calls) in VS Code.
+Another LINQ Tool is a VS Code extension and .NET runner for executing and debugging C# LINQ scripts. Open a `.linq` or `.csx` file, run it with <kbd>Shift</kbd>+<kbd>Enter</kbd>, or set breakpoints and press <kbd>F5</kbd>. Results and any `Dump()` calls are displayed in VS Code.
 
 The packaged extension includes one portable roll-forward runner. It reuses a compatible installed runtime or acquires one through Microsoft's .NET Install Tool, so extension users do not need to install .NET manually or wait for a runner rebuild when a newer runtime is selected.
 
@@ -32,7 +32,7 @@ npm run release:check
 
 On Windows, run `build.bat` from the repository root to publish the portable runner and compile the extension without creating a VSIX. Run `release-vsix.bat` to build, create the versioned VSIX in the `extension` directory, and verify its runner payload. Install the extension dependencies first with `npm install` in the `extension` directory.
 
-`release:check` publishes the .NET runner into the extension, compiles TypeScript, and creates a `.vsix` package. Install that VSIX in a clean VS Code profile to validate the release artifact. For local development, open the `extension` folder in VS Code and press <kbd>F5</kbd>. In the Extension Development Host window, open a script in `../examples`, then press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or run **Another LINQ Tool: Run Current File**.
+`release:check` publishes the .NET runner into the extension, compiles TypeScript, and creates a `.vsix` package. Install that VSIX in a clean VS Code profile to validate the release artifact. For local development, open the `extension` folder in VS Code and press <kbd>F5</kbd>. In the Extension Development Host window, open a script in `../examples`, then press <kbd>Shift</kbd>+<kbd>Enter</kbd> or run **Another LINQ Tool: Run Current File**.
 
 The complete extension setup, usage, profiles, and settings guide is in [extension/README.md](extension/README.md).
 

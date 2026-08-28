@@ -38,7 +38,10 @@ public static class ScriptExecutor
         IReadOnlyList<string> imports,
         IReadOnlyList<string> packages,
         DbContextRequest dbRequest,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? debugSourcePath = null,
+        int debugSourceOffset = 0,
+        string? debugSourceChecksum = null)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -52,9 +55,26 @@ public static class ScriptExecutor
             return InfrastructureError($"Invalid script metadata: {ex.Message}", ex, stopwatch);
         }
 
+        source = document.Source;
+        if (!string.IsNullOrWhiteSpace(debugSourcePath))
+        {
+            if (debugSourceOffset < 0 || debugSourceOffset > source.Length)
+            {
+                return InfrastructureError("Invalid debugger source offset.", new ArgumentOutOfRangeException(nameof(debugSourceOffset)), stopwatch);
+            }
+
+            // Profile preludes are generated code. Hide them from the debugger and map the user-authored
+            // portion back to the real editor document so regular VS Code breakpoints bind to the script.
+            var escapedPath = debugSourcePath.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            var checksumDirective = string.IsNullOrWhiteSpace(debugSourceChecksum)
+                ? string.Empty
+                : $"#pragma checksum \"{escapedPath}\" \"{{8829d00f-11b8-4213-878b-770e8597ac16}}\" \"{debugSourceChecksum}\"\n";
+            source = $"{checksumDirective}#line hidden\n{source[..debugSourceOffset]}\n#line 1 \"{escapedPath}\"\n{source[debugSourceOffset..]}";
+        }
+
         source = document.Kind == ScriptKind.Program
-            ? $"{document.Source}\n\nawait ProgramEntryPoint.InvokeAsync(Main)"
-            : document.Source;
+            ? $"{source}\n\n#line hidden\nawait ProgramEntryPoint.InvokeAsync(Main)"
+            : source;
 
         // Restore any profile NuGet packages and add the resolved DLLs to the assembly set so the loader
         // references and loads them (and their deps) exactly like application assemblies.
@@ -155,10 +175,22 @@ public static class ScriptExecutor
             .AddReferences(loaded.References)
             .WithImports(DefaultImports.Concat(effectiveImports));
 
+        if (!string.IsNullOrWhiteSpace(debugSourcePath))
+        {
+            options = options
+                .WithFilePath(debugSourcePath + ".linqrunner.g.cs")
+                .WithEmitDebugInformation(true);
+        }
+
         Script<object> script;
+        using var encodedDebugSource = string.IsNullOrWhiteSpace(debugSourcePath)
+            ? null
+            : new MemoryStream(System.Text.Encoding.UTF8.GetBytes(source));
         try
         {
-            script = CSharpScript.Create<object>(source, options, globalsType, assemblyLoader);
+            script = encodedDebugSource is null
+                ? CSharpScript.Create<object>(source, options, globalsType, assemblyLoader)
+                : CSharpScript.Create<object>(encodedDebugSource, options, globalsType, assemblyLoader);
         }
         catch (Exception ex)
         {
