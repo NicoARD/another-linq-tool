@@ -78,7 +78,12 @@
     "keybindings": [
       {
         "command": "linqRunner.runCurrentFile",
-        "key": "ctrl+enter",
+        "key": "shift+enter",
+        "when": "editorTextFocus && (resourceExtname == .linq || resourceExtname == .csx)"
+      },
+      {
+        "command": "linqRunner.runCurrentFile",
+        "key": "alt+x",
         "when": "editorTextFocus && (resourceExtname == .linq || resourceExtname == .csx)"
       }
     ],
