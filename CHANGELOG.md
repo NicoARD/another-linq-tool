@@ -2,7 +2,7 @@
 
 All notable changes to Another LINQ Tool are documented in this file.
 
-## 1.2.2
+## 1.3.0
 
 - Add source-level debugging for saved or unsaved `.linq` and `.csx` scripts, including breakpoints, stepping, variables, profile preludes, and the existing result display.
 - Run `.linq` and `.csx` scripts with Alt+X as well as Shift+Enter.
