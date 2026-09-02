@@ -52,6 +52,7 @@ static class Cli
             FactoryType = SingleOption(args, "--factory-type"),
             FactoryMethod = SingleOption(args, "--factory-method"),
             EfCoreVersion = SingleOption(args, "--ef-version"),
+            BypassQueryFilters = args.Contains("--bypass-query-filters"),
         };
 
         var source = await File.ReadAllTextAsync(file);

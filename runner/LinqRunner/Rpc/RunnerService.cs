@@ -58,6 +58,7 @@ public sealed class RunnerService
                 FactoryType = parameters.ContextFactoryType,
                 FactoryMethod = parameters.ContextFactoryMethod,
                 EfCoreVersion = parameters.EfCoreVersion,
+                BypassQueryFilters = parameters.BypassQueryFilters ?? false,
             },
             cancellationToken,
             parameters.DebugSourcePath,
@@ -129,6 +130,7 @@ public sealed class ExecuteParams
     public string? ContextFactoryType { get; set; }
     public string? ContextFactoryMethod { get; set; }
     public string? EfCoreVersion { get; set; }
+    public bool? BypassQueryFilters { get; set; }
     public string? DebugSourcePath { get; set; }
     public int DebugSourceOffset { get; set; }
     public string? DebugSourceChecksum { get; set; }

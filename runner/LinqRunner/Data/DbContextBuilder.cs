@@ -12,6 +12,7 @@ public sealed class DbContextRequest
     public string? FactoryType { get; init; }        // optional custom factory type
     public string? FactoryMethod { get; init; }      // factory method name (default "Create")
     public string? EfCoreVersion { get; init; }      // optional profile override for provider resolution
+    public bool BypassQueryFilters { get; init; }    // when true, read queries ignore EF Core global query filters
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(Context) || !string.IsNullOrWhiteSpace(FactoryType);
@@ -47,6 +48,11 @@ public static class DbContextBuilder
         var builder = Activator.CreateInstance(builderType)!;
 
         ApplyProvider(builder, request);
+
+        if (request.BypassQueryFilters)
+        {
+            QueryFilterBypass.Apply(builder, efCore);
+        }
 
         // DbContextOptionsBuilder<T> shadows the base "Options" property, so restrict to the declared one
         // (it returns the generic DbContextOptions<T> the context constructor expects).
@@ -118,6 +124,13 @@ public static class DbContextBuilder
 
     private static object CreateFromFactory(DbContextRequest request, IReadOnlyList<Assembly> loadedAssemblies)
     {
+        if (request.BypassQueryFilters)
+        {
+            throw new InvalidOperationException(
+                "Bypassing query filters is not supported with a custom DbContext factory. " +
+                "Disable it for this profile or remove the factory.");
+        }
+
         var factoryType = FindType(request.FactoryType!, loadedAssemblies)
             ?? throw new InvalidOperationException($"Factory type '{request.FactoryType}' was not found.");
 

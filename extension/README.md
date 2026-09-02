@@ -42,7 +42,7 @@ overdueInvoices.Dump();
 
 ## Just write C# and run it
 
-No ceremony. Write an expression or a few statements, press <kbd>Shift</kbd>+<kbd>Enter</kbd>, and the result appears \u2014 no class, no `Main()`, no project to set up.
+No ceremony. Write an expression or a few statements, press <kbd>Shift</kbd>+<kbd>Enter</kbd>, and the result appears, no `Main()`, no project to set up.
 
 ```csharp
 var names = new[] { "Ada", "Grace", "Linus" };
@@ -51,18 +51,6 @@ names.Where(n => n.Length <= 4).OrderBy(n => n)
 ```
 
 The last expression is shown automatically. Results land in an interactive panel where you can expand nested objects and collections, resize columns, and zoom in.
-
-
-
-### Get started in 30 seconds
-
-1. **New File → `.linq` C#/LINQ script** (or run **Another LINQ Tool: Run Current File** from the Command Palette).
-2. Write some C#.
-3. Press <kbd>Shift</kbd>+<kbd>Enter</kbd>.
-
-That's it. The script runs locally — no save required — and the result appears in the panel. `async`/`await` just works, including async EF Core queries.
-
-> Scripts run as C# with your user permissions. Only run scripts, assemblies, and NuGet packages you trust.
 
 ---
 

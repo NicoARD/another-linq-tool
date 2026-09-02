@@ -24,6 +24,7 @@ export interface ProfileEntry {
     connectionString?: string;
     contextFactory?: { type?: string; method?: string };
     dbEnabled?: boolean;
+    bypassQueryFilters?: boolean;
 }
 
 export interface ProfilesConfigFile {
@@ -47,6 +48,7 @@ export interface ProfileDescription {
         contextFactoryType?: string;
         contextFactoryMethod?: string;
         hasConnectionString: boolean;
+        bypassQueryFilters?: boolean;
     };
 }
 
@@ -70,6 +72,7 @@ export interface ResolvedProfile {
     connectionString?: string;
     contextFactoryType?: string;
     contextFactoryMethod?: string;
+    bypassQueryFilters?: boolean;
 }
 
 /** Manages user-configurable profiles in global User Settings and connection strings in Secret Storage. */
@@ -165,6 +168,7 @@ export class ProfileManager {
                         contextFactoryType: resolved.contextFactoryType,
                         contextFactoryMethod: resolved.contextFactoryMethod,
                         hasConnectionString: Boolean(resolved.connectionString),
+                        bypassQueryFilters: resolved.bypassQueryFilters,
                     }
                     : undefined,
             });
@@ -208,6 +212,7 @@ export class ProfileManager {
             connectionString: dbEnabled ? await this.secrets.get(this.connectionSecretKey(name)) : undefined,
             contextFactoryType: dbEnabled ? raw.contextFactory?.type : undefined,
             contextFactoryMethod: dbEnabled ? raw.contextFactory?.method : undefined,
+            bypassQueryFilters: dbEnabled ? raw.bypassQueryFilters === true : undefined,
         };
     }
 

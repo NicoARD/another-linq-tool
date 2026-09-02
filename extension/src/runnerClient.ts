@@ -84,6 +84,7 @@ export interface DbOptions {
     contextFactoryType?: string;
     contextFactoryMethod?: string;
     efCoreVersion?: string;
+    bypassQueryFilters?: boolean;
 }
 
 export interface CompletionEntry {

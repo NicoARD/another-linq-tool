@@ -407,6 +407,11 @@ function render() {
             '<label>Type</label><input type="text" id="factoryType" value="' + escapeAttr((p.contextFactory && p.contextFactory.type) || '') + '" placeholder="MyApp.Data.LinqContextFactory" />' +
             '<label>Method</label><input type="text" id="factoryMethod" value="' + escapeAttr((p.contextFactory && p.contextFactory.method) || '') + '" placeholder="Create" />' +
         '</fieldset>' +
+        '<fieldset><legend>Query filters</legend>' +
+            '<label style="margin:0"><input type="checkbox" id="bypassQueryFilters"' + (p.bypassQueryFilters ? ' checked' : '') + ' /> Bypass global query filters for reads <strong>(experimental)</strong></label>' +
+            '<div class="muted">Read queries run as if every query called <code>IgnoreQueryFilters()</code>. Writes such as <code>Add</code>, <code>Update</code>, and <code>Remove</code> are unaffected. Not available with a custom DbContext factory.</div>' +
+            '<div class="muted" style="margin-top:6px"><strong>⚠ Experimental:</strong> this rewrites every query and may not behave correctly with all EF Core versions, providers, or complex queries. Verify results before relying on it.</div>' +
+        '</fieldset>' +
         '</div>';
 
     editor.innerHTML = generalTab + refsTab + databaseTab + advancedTab;
@@ -515,6 +520,9 @@ function wireEditor() {
     };
     const dbEnabled = document.getElementById('dbEnabled');
     if (dbEnabled) dbEnabled.onchange = e => { p.dbEnabled = e.target.checked; render(); };
+
+    const bypassQueryFilters = document.getElementById('bypassQueryFilters');
+    if (bypassQueryFilters) bypassQueryFilters.onchange = e => { p.bypassQueryFilters = e.target.checked || undefined; };
 
     const refresh = document.getElementById('refreshContexts');
     if (refresh) refresh.onclick = () => {

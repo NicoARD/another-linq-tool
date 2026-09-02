@@ -449,6 +449,7 @@ async function runCurrentFile(context: vscode.ExtensionContext): Promise<void> {
                         contextFactoryType: profile?.contextFactoryType,
                         contextFactoryMethod: profile?.contextFactoryMethod,
                         efCoreVersion: profile?.efCoreVersion,
+                        bypassQueryFilters: profile?.bypassQueryFilters,
                     },
                     cancellationToken,
                 );
@@ -524,6 +525,7 @@ async function debugCurrentFile(context: vscode.ExtensionContext): Promise<void>
                     contextFactoryType: profile?.contextFactoryType,
                     contextFactoryMethod: profile?.contextFactoryMethod,
                     efCoreVersion: profile?.efCoreVersion,
+                    bypassQueryFilters: profile?.bypassQueryFilters,
                 },
                 cancellationToken,
                 {
