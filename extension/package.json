@@ -134,6 +134,26 @@
         "icon": "$(new-file)"
       }
     ],
+    "languageModelTools": [
+      {
+        "name": "another-linq-tool_getProfiles",
+        "displayName": "Another LINQ Tool Profiles",
+        "modelDescription": "Returns the Another LINQ Tool `.linq`/`.csx` file format guide plus the live list of configured execution profiles (name, imports, database provider/connection presence, NuGet packages) and the active profile. Use when authoring, editing, or explaining `.linq`/`.csx` scripts for this extension.",
+        "userDescription": "Provides Copilot with the .linq/.csx format and available Another LINQ Tool profiles.",
+        "toolReferenceName": "linqProfiles",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(database)",
+        "tags": [
+          "linq",
+          "csharp",
+          "csx"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    ],
     "menus": {
       "editor/title": [
         {

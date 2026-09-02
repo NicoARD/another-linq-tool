@@ -97,6 +97,11 @@ export interface CompletionResult {
     error?: string;
 }
 
+export interface DiscoverContextsResult {
+    contexts: string[];
+    error?: string;
+}
+
 /**
  * Owns the runner child process and a JSON-RPC connection to it over stdio.
  * The process is started lazily on first use and restarted on demand.
@@ -180,6 +185,11 @@ export class RunnerClient {
     async restart(): Promise<void> {
         this.dispose();
         await this.ensureStarted();
+    }
+
+    async discoverContexts(assemblies: string[]): Promise<DiscoverContextsResult> {
+        await this.ensureStarted();
+        return this.connection!.sendRequest<DiscoverContextsResult>('discoverContexts', { assemblies });
     }
 
     async processId(): Promise<number> {

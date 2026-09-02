@@ -89,6 +89,20 @@ public sealed class RunnerService
         await Task.Delay(50);
         Environment.Exit(0);
     });
+
+    [JsonRpcMethod("discoverContexts", UseSingleObjectParameterDeserialization = true)]
+    public DiscoverContextsResult DiscoverContexts(DiscoverContextsParams parameters)
+    {
+        try
+        {
+            var contexts = Data.ContextDiscovery.Discover(parameters.Assemblies ?? []);
+            return new DiscoverContextsResult { Contexts = [.. contexts] };
+        }
+        catch (Exception ex)
+        {
+            return new DiscoverContextsResult { Contexts = [], Error = ex.Message };
+        }
+    }
 }
 
 public sealed class InitializeParams
@@ -133,4 +147,15 @@ public sealed class CompleteParams
     public string? ContextFactoryMethod { get; set; }
     public string? EfCoreVersion { get; set; }
     public bool NamespacesOnly { get; set; }
+}
+
+public sealed class DiscoverContextsParams
+{
+    public string[]? Assemblies { get; set; }
+}
+
+public sealed class DiscoverContextsResult
+{
+    public string[] Contexts { get; set; } = [];
+    public string? Error { get; set; }
 }

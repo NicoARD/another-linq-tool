@@ -7,7 +7,7 @@ import { ResultPanel } from './resultPanel';
 import { ProfileManager } from './profiles';
 import { ConfigPanel } from './configPanel';
 import { resolveManagedRunner, selectRunnerFramework } from './runtimeManager';
-
+import { registerLanguageModelTools, ensureWorkspaceInstructions } from './lmTools';
 let client: RunnerClient | undefined;
 let clientLaunchKey: string | undefined;
 let output: vscode.OutputChannel;
@@ -31,6 +31,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(statusBar);
     updateStatusBar();
 
+    registerLanguageModelTools(context, profiles);
+    void ensureWorkspaceInstructions(context);
+
     context.subscriptions.push(
         vscode.commands.registerCommand('linqRunner.runCurrentFile', () => runCurrentFile(context)),
         vscode.commands.registerCommand('linqRunner.debugCurrentFile', () => debugCurrentFile(context)),
@@ -39,9 +42,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.commands.registerCommand('linqRunner.newLinqFile', (resource?: vscode.Uri) =>
             createLinqFile(resource)),
         vscode.commands.registerCommand('linqRunner.configure', () =>
-            ConfigPanel.show(context, profiles, () => updateStatusBar())),
+            ConfigPanel.show(context, profiles, () => updateStatusBar(),
+                (assemblies, tf, ef) => discoverContexts(context, assemblies, tf, ef))),
         vscode.commands.registerCommand('linqRunner.openGlobalProfiles', () =>
-            ConfigPanel.show(context, profiles, () => updateStatusBar())),
+            ConfigPanel.show(context, profiles, () => updateStatusBar(),
+                (assemblies, tf, ef) => discoverContexts(context, assemblies, tf, ef))),
         vscode.workspace.onDidChangeConfiguration((event) => {
             if (event.affectsConfiguration('linqRunner.dotnetPath') || event.affectsConfiguration('linqRunner.runnerPath')) {
                 client?.dispose();
@@ -282,6 +287,17 @@ async function getClient(
     clientLaunchKey = launchKey;
     context.subscriptions.push({ dispose: () => client?.dispose() });
     return client;
+}
+
+/** Loads the given DLLs in the runner and returns the DbContext subclasses found in them. */
+async function discoverContexts(
+    context: vscode.ExtensionContext,
+    assemblies: string[],
+    targetFramework?: 'net10.0' | 'net11.0',
+    efCoreVersion?: string,
+): Promise<{ contexts: string[]; error?: string }> {
+    const runnerClient = await getClient(context, assemblies, [], targetFramework, efCoreVersion);
+    return runnerClient.discoverContexts(assemblies);
 }
 
 /** Reads an optional `@profile <name>` directive and masks its text so diagnostics retain their line numbers. */

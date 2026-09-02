@@ -31,6 +31,25 @@ export interface ProfilesConfigFile {
     profiles?: Record<string, ProfileEntry>;
 }
 
+export interface ProfileDescription {
+    name: string;
+    isActive: boolean;
+    targetFramework?: ProfileTargetFramework;
+    efCoreVersion?: string;
+    imports: string[];
+    packages: string[];
+    assemblies: string[];
+    missingAssemblies: string[];
+    prelude?: string;
+    database?: {
+        context?: string;
+        provider?: string;
+        contextFactoryType?: string;
+        contextFactoryMethod?: string;
+        hasConnectionString: boolean;
+    };
+}
+
 export function normalizeAssembly(entry: AssemblyEntry): { path: string; enabled: boolean } {
     return typeof entry === 'string'
         ? { path: entry, enabled: true }
@@ -118,6 +137,39 @@ export class ProfileManager {
 
     async setActive(name: string): Promise<void> {
         await this.globalState.update(ACTIVE_PROFILE_KEY, name);
+    }
+
+    /** Sanitized, secret-free description of every profile for AI/tooling consumption. */
+    async describeProfiles(): Promise<ProfileDescription[]> {
+        const active = this.getActiveName();
+        const descriptions: ProfileDescription[] = [];
+        for (const name of this.listProfiles()) {
+            const resolved = await this.resolveActive(name);
+            if (!resolved) {
+                continue;
+            }
+            descriptions.push({
+                name,
+                isActive: name === active,
+                targetFramework: resolved.targetFramework,
+                efCoreVersion: resolved.efCoreVersion,
+                imports: resolved.imports,
+                packages: resolved.packages,
+                assemblies: resolved.assemblies,
+                missingAssemblies: resolved.missing,
+                prelude: resolved.prelude,
+                database: resolved.context
+                    ? {
+                        context: resolved.context,
+                        provider: resolved.provider,
+                        contextFactoryType: resolved.contextFactoryType,
+                        contextFactoryMethod: resolved.contextFactoryMethod,
+                        hasConnectionString: Boolean(resolved.connectionString),
+                    }
+                    : undefined,
+            });
+        }
+        return descriptions;
     }
 
     async resolveActive(overrideName?: string): Promise<ResolvedProfile | undefined> {
