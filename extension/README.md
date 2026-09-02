@@ -1,100 +1,130 @@
-# Another LINQ Tool for VS Code
+# Another LINQ Tool
 
-Run and debug C# and LINQ scripts interactively inside VS Code. Open a `.linq` or `.csx` file, write ordinary C#, and press <kbd>Shift</kbd>+<kbd>Enter</kbd> to execute it locally and inspect the result.
+**Interactive C# scripting, right inside VS Code.**
 
-The final expression is displayed automatically, and `Dump()` can display intermediate or multiple values. Results appear in an interactive panel where nested objects and collections can be expanded.
+Open a file, write plain C#, hit <kbd>Shift</kbd>+<kbd>Enter</kbd>, and see the result instantly — no console project, no boilerplate, no need for `Main()`.
 
 ![Another LINQ Tool in action](https://i.imgur.com/QdQChSy.gif)
 
-## Use your own code and databases
-
-Another LINQ Tool lets scripts use your existing compiled application code. Add your DLLs to an execution profile, import their namespaces, and use their public types, methods, extension methods, and business logic directly from a script. 
-
-Thanks to .NET's backward compatibility, assemblies targeting compatible earlier versions can generally run when the portable runner is launched on a newer runtime. Assemblies that depend on .NET Framework-only APIs or otherwise incompatible runtimes may not load.
-
-Profiles can also configure an Entity Framework Core `DbContext`. The configured context is made available as `Db`, so scripts can use your application's data model without repeatedly setting up references and database access.
-
-```csharp
-var overdueInvoices = await Db.Invoices
-    .Where(invoice => invoice.IsOverdue())
-    .OrderBy(invoice => invoice.DueDate)
-    .ToListAsync();
-
-overdueInvoices.Dump("Overdue invoices");
-```
-
-This provides an interactive query window backed by your actual application code, without creating a temporary console project for every query.
 
 ## Features
 
-- Create a `.linq` C#/LINQ script from VS Code's **New File** picker, the Command Palette, or Explorer context menu. It opens as an untitled editor and can run without being saved first. Existing `.csx` files remain supported interchangeably.
-- Run C# scripts (`.linq` and `.csx` files) with <kbd>Shift</kbd>+<kbd>Enter</kbd> or the editor play button.
-- Set breakpoints and press <kbd>F5</kbd> (or select the editor debug button) to step through a script and inspect its variables. Unsaved and modified scripts are debugged directly from their current editor contents. Debug runs use the same profile and result panel as normal runs.
-- Reference and use your own compiled .NET assemblies, including compatible earlier versions and newer runtimes detected from assembly metadata.
-- Configure an EF Core `DbContext` and access it as `Db`.
-- Get profile-aware C# autocomplete from profile preludes, imported namespaces, referenced DLLs, NuGet packages, and the configured `DbContext`.
-- Group assemblies, imported namespaces, NuGet packages, setup code, and database configuration into reusable profiles.
-- Display a script's final expression automatically and use `Dump()` anywhere in the script.
-- Inspect expandable objects, properties, and collections in the result panel.
-- Run asynchronous C# and EF Core queries with `async` and `await`.
-- Partially run LINQPad query files: C# `Expression`, `Statements`, and `Program` queries are supported, but LINQPad profiles are not imported and database connections configured in LINQPad cannot be used.
-- Choose a profile globally or override it for an individual script with `@profile`.
-- Use automatically managed .NET runtimes with .NET 10 LTS as the default.
+- Create and run `.linq` or `.csx` C# scripts instantly.
+- Use your own .NET code directly in scripts.
+- Connect an EF Core `DbContext` and query it through `Db`.
+- Run scripts with **Shift+Enter** or the play button.
+- Debug with breakpoints and **F5**, even without saving.
+- Create reusable profiles for your code, packages, setup, and databases.
+- Get autocomplete for your code, packages, and `DbContext`.
+- Inspect results with `Dump()` and expandable objects.
+- Use `async`/`await` and async EF Core queries.
+- Run LINQPad C# query files with partial compatibility.
+- Switch profiles globally or per script.
+- Automatically manage .NET runtimes, with **.NET 10 LTS** by default.
+---
 
-<details>
-<summary><strong>Requirements</strong></summary>
+## Query your real app and database
 
+Group your DLLs, namespaces, NuGet packages, and database connection into a reusable **profile**. Then write queries against your actual application code, no throwaway console app per question.
 
-- VS Code 1.85 or newer
+```csharp
+var overdueInvoices = await Db.Invoices
+    .Where(invoice => invoice.IsOverdue())   // your own extension method
+    .OrderBy(invoice => invoice.DueDate)
+    .ToListAsync();
 
-The extension includes one portable roll-forward runner and depends on Microsoft's .NET Install Tool. It reuses an existing compatible runtime when available and otherwise downloads the runtime for the current system. Users do not need to install .NET manually, but the first run may require a network connection.
+overdueInvoices.Dump();
+```
 
-.NET 10 LTS is used by default. When a configured profile assembly targets a newer framework, the extension detects its target-framework metadata and launches the same bundled runner on that compatible runtime. A future runtime can therefore be selected without shipping another target-specific runner build.
+`Db` is your configured EF Core context. `Dump()` displays any value, anywhere — call it as many times as you like.
 
-</details>
+---
 
-<details>
-<summary><strong>Running a script</strong></summary>
+## Just write C# and run it
 
-
-1. Open a `.linq` or `.csx` file in VS Code.
-2. Press <kbd>Shift</kbd>+<kbd>Enter</kbd>, select the play button in the editor title bar, or run **Another LINQ Tool: Run Current File** from the Command Palette.
-3. Review the result panel. The final expression is displayed when it has no trailing semicolon; `Dump()` calls display intermediate values.
-
-Nested objects and collections in results and `Dump()` output are expandable. Use the disclosure arrows, or focus them and press <kbd>Enter</kbd> or <kbd>Space</kbd>, to navigate into lists and object properties.
-
-In the result preview, hold <kbd>Ctrl</kbd> and scroll to zoom in or out. Drag a column header's right edge to resize it, use <kbd>Left</kbd>/<kbd>Right</kbd> while the resize handle is focused, or double-click the handle to restore automatic sizing.
-
-For example:
+No ceremony. Write an expression or a few statements, press <kbd>Shift</kbd>+<kbd>Enter</kbd>, and the result appears \u2014 no class, no `Main()`, no project to set up.
 
 ```csharp
 var names = new[] { "Ada", "Grace", "Linus" };
 
-names
-    .Where(name => name.Length <= 4)
-    .OrderBy(name => name)
+names.Where(n => n.Length <= 4).OrderBy(n => n)
 ```
 
-Scripts support `async`/`await`, including asynchronous EF Core operations:
+The last expression is shown automatically. Results land in an interactive panel where you can expand nested objects and collections, resize columns, and zoom in.
+
+
+
+### Get started in 30 seconds
+
+1. **New File → `.linq` C#/LINQ script** (or run **Another LINQ Tool: Run Current File** from the Command Palette).
+2. Write some C#.
+3. Press <kbd>Shift</kbd>+<kbd>Enter</kbd>.
+
+That's it. The script runs locally — no save required — and the result appears in the panel. `async`/`await` just works, including async EF Core queries.
+
+> Scripts run as C# with your user permissions. Only run scripts, assemblies, and NuGet packages you trust.
+
+---
+
+<details>
+<summary><strong>Working with results</strong></summary>
+
+- The **final expression** is displayed automatically when it has no trailing semicolon.
+- `Dump()` displays intermediate or multiple values from anywhere in the script.
+- Expand nested objects and collections with the disclosure arrows (or focus one and press <kbd>Enter</kbd>/<kbd>Space</kbd>).
+- Hold <kbd>Ctrl</kbd> and scroll to zoom the preview.
+- Drag a column header's right edge to resize, use <kbd>Left</kbd>/<kbd>Right</kbd> on the focused handle, or double-click it to restore automatic sizing.
+
+</details>
+
+<details>
+<summary><strong>Execution profiles</strong></summary>
+
+Profiles bundle the assemblies, namespaces, NuGet packages, and optional database context your scripts need. They're stored as global VS Code user settings, so they're available in every workspace.
+
+1. Run **Another LINQ Tool: Configure Profiles**.
+2. Select **New**, name it, and add assemblies, imports, packages, and an optional setup snippet.
+3. For database scripts, enable database support and provide the context type, provider, connection string, and (if needed) factory info.
+4. Select **Save**, then make it active from the status bar or via **Another LINQ Tool: Select Profile**.
+
+The editor can import/export JSON profiles. **Run before every script** prepends C# (helpers, variables, setup) to each run in the same script context.
+
+Each profile has a **.NET runtime** selector (**Automatic** uses .NET 10 unless a referenced assembly targets something newer) and an optional **EF Core version** (leave blank to detect the version published beside your app). The runner restarts automatically when the runtime, assemblies, packages, provider, or EF version changes.
+
+Connection strings are stored in VS Code Secret Storage. Exported profiles may contain connection strings — store them securely and never commit them.
+
+</details>
+
+<details>
+<summary><strong>Choosing a profile per script</strong></summary>
+
+Each run uses the **active** profile shown in the status bar (or `linqRunner.defaultProfile` if none is selected).
+
+Override it for a single script with a `@profile` directive:
 
 ```csharp
-var activeCustomers = await Db.Customers
-    .Where(customer => customer.IsActive)
-    .ToListAsync();
+@profile testmodel
 
-activeCustomers.Dump("active customers");
+Db.Customers.Where(customer => customer.IsActive).ToList()
 ```
 
-The script is executed as C# code with your user permissions. Treat scripts, referenced assemblies, and NuGet packages as trusted code only.
+It can also be written as a comment, and names with spaces are supported:
 
-### LINQPad query compatibility
+```csharp
+// @profile MyStagingDB
+```
 
-LINQPad query headers are supported. `Expression` and `Statements` are intentionally interchangeable in Another LINQ Tool and use the same dynamic execution as ordinary scripts: statements run normally, and a final expression without a semicolon is automatically displayed. You do not need to change the query kind when switching between those two styles. A `Program` query invokes its parameterless `Main` method, including async and value-returning forms.
+The `@profile` line is stripped before running. If the named profile doesn't exist, the active/default profile is used and a warning is shown.
+
+</details>
+
+<details>
+<summary><strong>LINQPad query compatibility</strong></summary>
+
+LINQPad query headers are supported. `Expression` and `Statements` are interchangeable and run the same way — statements run normally, and a final expression without a semicolon is displayed automatically. A `Program` query invokes its parameterless `Main` (including async and value-returning forms).
 
 ```csharp
 <Query Kind="Program">
-  <Namespace>System</Namespace>
-  <Namespace>System.Collections.Generic</Namespace>
   <Namespace>System.Linq</Namespace>
 </Query>
 
@@ -105,7 +135,7 @@ async Task<List<int>> Main()
 }
 ```
 
-Each `<Namespace>` is imported for that script. The equivalent native directives are `@kind` (or `@query`) and repeatable `@namespace` lines:
+Each `<Namespace>` is imported. The native equivalents are `@kind` (or `@query`) and repeatable `@namespace` lines:
 
 ```csharp
 @kind Program
@@ -117,65 +147,36 @@ void Main()
 }
 ```
 
-Supported kinds are `Program`, `Expression`, and `Statements`. These directives may be combined with `@profile`.
+Supported kinds: `Program`, `Expression`, `Statements`. LINQPad profiles and LINQPad-configured database connections are **not** imported.
 
 </details>
 
 <details>
-<summary><strong>Configuration</strong></summary>
+<summary><strong>Commands</strong></summary>
 
+| Command | Description |
+| --- | --- |
+| **Another LINQ Tool: Run Current File** | Execute the active script. |
+| **Another LINQ Tool: Debug Current File** | Attach the .NET debugger and run the active script, including unsaved changes. |
+| **Another LINQ Tool: Restart Runner** | Stop and start the local runner process. |
+| **Another LINQ Tool: Select Profile** | Change the active execution profile. |
+| **Another LINQ Tool: Configure Profiles** | Open the profile editor. |
+| **Another LINQ Tool: Open Settings** | Open this extension's VS Code settings. |
 
-### Execution profiles
+</details>
 
-Profiles group the assemblies, namespaces, NuGet packages, and optional database context needed by related scripts. They are global VS Code user settings, so the same profiles are available in every workspace.
+<details>
+<summary><strong>Settings</strong></summary>
 
-1. Run **Another LINQ Tool: Configure Profiles**.
-2. Select **New**, give the profile a name, and add its assemblies, imports, packages, and optional setup snippet.
-3. For database scripts, enable database support and supply the context type, provider, connection string, and (when needed) context factory information.
-4. Select **Save**. Use the status-bar profile name or **Another LINQ Tool: Select Profile** to make it active.
-
-The profile editor can import and export JSON profile files. Exported files may include connection strings; store them securely and do not commit them.
-
-Each profile has a **.NET runtime** selector. **Automatic** uses .NET 10 unless a configured assembly targets a newer runtime; choose an explicit runtime for scripts or packages whose requirement is not exposed by a referenced DLL. Selecting a runtime older than a configured assembly produces a compatibility error.
-
-Database profiles also have an optional **EF Core version**. Leave it blank to detect the version published beside the application assembly. Set an exact version such as `8.0.19` when the provider is not part of the application output and must be restored. The extension automatically starts a clean runner when the runtime, assemblies, packages, provider, or EF version changes.
-
-Connection strings saved through the editor are held in VS Code Secret Storage. Profile names and other non-secret values are stored in the global `linqRunner.*` user settings.
-
-### Choosing the profile per script
-
-Each run uses the **active** profile shown in the status bar (change it with **Another LINQ Tool: Select Profile**). If no profile has been selected, the `linqRunner.defaultProfile` is used.
-
-To override the profile for a single script, add a `@profile` directive in its metadata block, naming the profile to use:
-
-```csharp
-@profile testmodel
-
-Db.Customers.Where(customer => customer.IsActive).ToList()
-```
-
-The directive may also be written as a comment, and profile names with spaces are supported:
-
-```csharp
-// @profile MyStagingDB
-```
-
-The `@profile` line is stripped before the script runs. If the named profile does not exist, the active profile (or the default) is used instead and a warning is shown.
-
-
-The **Run before every script** field accepts C# code that is prepended to each script executed with that profile. Use it for helper methods, variables, or one-time setup statements; it runs in the same script context, so declarations are available to the active script.
-
-### Settings
-
-Open **Another LINQ Tool: Open Settings** from the Command Palette, or edit VS Code user settings directly.
+Open **Another LINQ Tool: Open Settings**, or edit VS Code user settings directly.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `linqRunner.dotnetPath` | `dotnet` | Path or command used when a custom `.dll` is selected as the runner. |
-| `linqRunner.runnerPath` | empty | Absolute path to a custom runner executable or `.dll`. Leave empty to launch the bundled portable runner on an automatically selected runtime. |
+| `linqRunner.dotnetPath` | `dotnet` | Path/command used when a custom `.dll` is selected as the runner. |
+| `linqRunner.runnerPath` | empty | Absolute path to a custom runner executable or `.dll`. Empty launches the bundled portable runner. |
 | `linqRunner.rowLimit` | `1000` | Maximum number of items shown for sequence results. |
-| `linqRunner.profiles` | `{}` | Named profiles. Prefer the profile editor over manual changes. |
-| `linqRunner.defaultProfile` | empty | Profile selected when no explicit active profile has been chosen. |
+| `linqRunner.profiles` | `{}` | Named profiles. Prefer the profile editor over manual edits. |
+| `linqRunner.defaultProfile` | empty | Profile used when no active profile is chosen. |
 
 Example non-secret profile settings:
 
@@ -196,46 +197,34 @@ Example non-secret profile settings:
 }
 ```
 
-Use absolute assembly paths in global settings. Disabled assembly entries may be represented as `{ "path": "C:\\path\\to\\library.dll", "enabled": false }`.
-
-### Database profiles
-
-When a profile has database support enabled, the configured `DbContext` is supplied to the script as `Db`. A typical script starts with:
-
-```csharp
-Db.Customers.Where(customer => customer.IsActive).ToList()
-```
-
-Build the assembly containing the context before running. The extension reports missing assembly paths in the **Another LINQ Tool** output channel.
+Use absolute assembly paths in global settings. Disabled entries may be written as `{ "path": "C:\\path\\to\\library.dll", "enabled": false }`.
 
 </details>
 
 <details>
-<summary><strong>Commands</strong></summary>
+<summary><strong>Requirements</strong></summary>
 
+- VS Code 1.85 or newer.
 
-| Command | Description |
-| --- | --- |
-| **Another LINQ Tool: Run Current File** | Execute the active script. |
-| **Another LINQ Tool: Debug Current File** | Attach the .NET debugger and execute the active script, including unsaved changes. |
-| **Another LINQ Tool: Restart Runner** | Stop and start the local runner process. |
-| **Another LINQ Tool: Select Profile** | Change the active execution profile. |
-| **Another LINQ Tool: Configure Profiles** | Open the profile editor. |
-| **Another LINQ Tool: Open Settings** | Open this extension's VS Code settings. |
+The extension ships one portable roll-forward runner and depends on Microsoft's .NET Install Tool. It reuses an existing compatible runtime when available, otherwise it downloads one for your system — so you don't need to install .NET manually, though the first run may need a network connection.
+
+.NET 10 LTS is used by default. When a profile assembly targets a newer framework, the extension detects it from target-framework metadata and launches the same bundled runner on that compatible runtime.
+
+Assemblies that depend on .NET Framework-only APIs or otherwise incompatible runtimes may not load.
 
 </details>
 
 <details>
 <summary><strong>Troubleshooting</strong></summary>
 
-- **Runtime acquisition fails:** check the .NET Install Tool output, network/proxy access, or configure that tool to use an existing compatible .NET installation.
+- **Runtime acquisition fails:** check the .NET Install Tool output, network/proxy access, or point that tool at an existing compatible .NET install.
 - **Runner not found:** reinstall the extension, or set `linqRunner.runnerPath` to an absolute runner executable or DLL path.
-- **A custom runner DLL cannot start:** install its required .NET runtime or set `linqRunner.dotnetPath` to the appropriate executable.
-- **`Microsoft.Data.SqlClient is not supported on this platform`:** rebuild the referenced project so its `runtimes` directory and `.deps.json` are present beside the assembly, then restart the runner. The extension selects the matching RID-specific SqlClient implementation rather than its unsupported root facade.
+- **A custom runner DLL cannot start:** install its required .NET runtime or set `linqRunner.dotnetPath` to the right executable.
+- **`Microsoft.Data.SqlClient is not supported on this platform`:** rebuild the referenced project so its `runtimes` directory and `.deps.json` sit beside the assembly, then restart the runner.
 - **Missing types or namespaces:** select the correct profile and add the required assembly and import.
-- **Missing profile assembly:** build the referenced project and update the assembly path if its output location changed.
-- **A NuGet-enabled profile cannot restore:** install an SDK capable of targeting the selected execution runtime. Runtime acquisition installs a runtime, not an SDK.
-- **An EF Core profile reports incompatible versions:** leave **EF Core version** on Automatic when the provider is published beside the application, or select the exact EF version used to build the `DbContext`. The runner will not combine providers from different EF major versions.
+- **Missing profile assembly:** build the referenced project and update the path if its output location changed.
+- **A NuGet-enabled profile cannot restore:** install an SDK capable of targeting the selected runtime (runtime acquisition installs a runtime, not an SDK).
+- **An EF Core profile reports incompatible versions:** leave **EF Core version** on Automatic when the provider is published beside your app, or select the exact EF version used to build the `DbContext`.
 - **A script or package fails:** open the **Another LINQ Tool** output channel for runner diagnostics.
 
 </details>
@@ -243,7 +232,6 @@ Build the assembly containing the context before running. The extension reports 
 <details>
 <summary><strong>License</strong></summary>
 
-
-The extension is licensed under the [PolyForm Internal Use License 1.0.0](LICENSE).
+Licensed under the [PolyForm Internal Use License 1.0.0](LICENSE).
 
 </details>
