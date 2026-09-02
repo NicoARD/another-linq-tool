@@ -2,6 +2,13 @@
 
 All notable changes to Another LINQ Tool are documented in this file.
 
+## 1.4.0
+
+- Redesign the profile configuration editor with a pinned profiles bar and General, References & Code, Database, and Advanced tabs.
+- Add a guided database connection builder for SQLite, SQL Server, PostgreSQL, and MySQL, with the raw connection string still editable under Advanced.
+- Detect `DbContext` types from the configured DLLs and referenced project assemblies in the same output folder, offered as suggestions via a Detect button.
+- Give GitHub Copilot the `.linq`/`.csx` format and available profiles through auto-applied workspace instructions and a language-model tool.
+
 ## 1.2.2
 
 - Run `.linq` and `.csx` scripts with Alt+X as well as Shift+Enter.
