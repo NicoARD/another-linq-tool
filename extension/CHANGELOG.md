@@ -2,6 +2,10 @@
 
 All notable changes to Another LINQ Tool are documented in this file.
 
+## 1.4.1
+
+- Stop creating auto-generated Markdown instruction files in opened workspaces.
+
 ## 1.4.0
 
 - Redesign the profile configuration editor with a pinned profiles bar and General, References & Code, Database, and Advanced tabs.

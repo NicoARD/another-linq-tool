@@ -7,7 +7,7 @@ import { ResultPanel } from './resultPanel';
 import { ProfileManager } from './profiles';
 import { ConfigPanel } from './configPanel';
 import { resolveManagedRunner, selectRunnerFramework } from './runtimeManager';
-import { registerLanguageModelTools, ensureWorkspaceInstructions } from './lmTools';
+import { registerLanguageModelTools } from './lmTools';
 let client: RunnerClient | undefined;
 let clientLaunchKey: string | undefined;
 let output: vscode.OutputChannel;
@@ -32,7 +32,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     updateStatusBar();
 
     registerLanguageModelTools(context, profiles);
-    void ensureWorkspaceInstructions(context);
 
     context.subscriptions.push(
         vscode.commands.registerCommand('linqRunner.runCurrentFile', () => runCurrentFile(context)),
