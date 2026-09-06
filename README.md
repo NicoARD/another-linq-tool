@@ -1,6 +1,10 @@
 # Another LINQ Tool
 
-Another LINQ Tool is a VS Code extension and .NET runner for executing and debugging C# LINQ scripts. Open a `.linq` or `.csx` file, run it with <kbd>Shift</kbd>+<kbd>Enter</kbd>, or set breakpoints and press <kbd>F5</kbd>. Results and any `Dump()` calls are displayed in VS Code.
+[Install from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=N-Tsoulos.another-linq-tool)
+
+Another LINQ Tool is a free C# query and scripting extension for VS Code. Reference your project code by selecting its DLLs, create reusable profiles, and query databases through your actual EF Core `DbContext`, with IntelliSense and debugging. A free alternative to LINQPad.
+
+Open a `.linq` or `.csx` file, run it with <kbd>Shift</kbd>+<kbd>Enter</kbd>, or set breakpoints and press <kbd>F5</kbd>. Results and any `Dump()` calls are displayed directly in VS Code.
 
 The packaged extension includes one portable roll-forward runner. It reuses a compatible installed runtime or acquires one through Microsoft's .NET Install Tool, so extension users do not need to install .NET manually or wait for a runner rebuild when a newer runtime is selected.
 
