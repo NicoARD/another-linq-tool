@@ -12,7 +12,7 @@ It supports ordinary C# scripts, LINQPad-style Expression, Statements, and Progr
 
 Create a `.linq` C#/LINQ script directly from VS Code's **New File** picker, the Command Palette, or Explorer context menu. It can run without being saved first; existing `.csx` files remain supported.
 
-Editor autocomplete uses the active script profile, including its prelude, imports, referenced DLLs, NuGet packages, and typed `DbContext`. Profile and namespace metadata can also be completed in native directives and LINQPad query headers.
+Editor IntelliSense uses the active script profile, including its prelude, imports, referenced DLLs, NuGet packages, and typed `DbContext`. Profile and namespace metadata can also be completed in native directives and LINQPad query headers.
 
 LINQPad `Expression` and `Statements` query kinds are interchangeable in Another LINQ Tool. Both are executed dynamically: statements run normally, and a final expression without a semicolon is automatically displayed.
 
