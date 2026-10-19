@@ -28,16 +28,16 @@ The extension manages a compatible .NET runtime. Package restoration additionall
 
 ## Features
 
-- Organize independent scripts into XML-backed `.linqc` / `.csxc` notebooks with saved results.
 - Create and run `.linq` or `.csx` C# scripts instantly.
 - Use your own .NET code directly in scripts.
 - Connect an EF Core `DbContext` and query it through `Db`.
-- Run scripts with **Shift+Enter** or the play button.
-- Debug with breakpoints and **F5**, even without saving.
+- Organize independent scripts into XML-backed `.linqc` / `.csxc` notebooks with saved results.
 - Create reusable profiles for your code, packages, setup, and databases.
 - Get autocomplete for your code, packages, and `DbContext`.
 - Inspect results with `Dump()` and expandable objects.
 - Use `async`/`await` and async EF Core queries.
+- Run scripts with **Shift+Enter** or the play button.
+- Debug with breakpoints and **F5**, even without saving.
 - Run LINQPad C# query files with partial compatibility.
 - Switch profiles globally or per script.
 - Automatically manage .NET runtimes, with **.NET 10 LTS** by default.

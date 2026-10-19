@@ -2,6 +2,17 @@
 
 All notable changes to Another LINQ Tool are documented in this file.
 
+## 1.5.0
+
+- Add `.linqc` and `.csxc` script collections: native VS Code notebooks backed by XML, with collection-wide profiles and independently runnable script blocks.
+- Add an editable namespaces block with `@namespace` directives, a working example, and profile-aware IntelliSense, plus a shared prelude rerun before each script block.
+- Run and debug individual blocks with toolbar actions, Shift+Enter, and F5, including cell breakpoints, stepping, source navigation, and local-variable inspection.
+- Display expandable results beneath blocks, including nested values, `Dump()` output, console output, diagnostics, and SQL, with an optional results-panel destination.
+- Save the latest results inside collection files, flag results whose inputs have changed, and provide per-block and collection-wide clear actions.
+- Add XML/UI switching with unsaved-change protection and Collapse/Expand controls for code blocks.
+- Create untitled collections from New File, Explorer, or the Command Palette, with selected-folder support, collision-safe names, and descriptive script/collection entries.
+- Expand both usage guides with collection walkthroughs, runtime and SDK requirements, security guidance, and troubleshooting; add collection format tests, native notebook/debugger integration checks, and package validation.
+
 ## 1.4.1
 
 - Stop creating auto-generated Markdown instruction files in opened workspaces.
