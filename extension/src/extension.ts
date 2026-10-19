@@ -8,6 +8,7 @@ import { ProfileManager } from './profiles';
 import { ConfigPanel } from './configPanel';
 import { resolveManagedRunner, selectRunnerFramework } from './runtimeManager';
 import { registerLanguageModelTools } from './lmTools';
+import { CollectionNotebook, collectionOptions, collectionType } from './collectionNotebook';
 let client: RunnerClient | undefined;
 let clientLaunchKey: string | undefined;
 let output: vscode.OutputChannel;
@@ -32,6 +33,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     updateStatusBar();
 
     registerLanguageModelTools(context, profiles);
+    context.subscriptions.push(new CollectionNotebook(context, profiles, profile => getClient(
+        context, profile?.assemblies ?? [], profile?.packages ?? [], profile?.targetFramework,
+        profile?.efCoreVersion, profile?.provider,
+    )));
 
     context.subscriptions.push(
         vscode.commands.registerCommand('linqRunner.runCurrentFile', () => runCurrentFile(context)),
@@ -116,6 +121,24 @@ async function provideCompletionItems(
     position: vscode.Position,
     cancellationToken: vscode.CancellationToken,
 ): Promise<vscode.CompletionItem[] | undefined> {
+    const collection = vscode.workspace.notebookDocuments.find(notebook => notebook.notebookType === collectionType
+        && notebook.getCells().some(cell => cell.document.uri.toString() === document.uri.toString()));
+    if (collection) {
+        const cell = collection.getCells().find(item => item.document.uri.toString() === document.uri.toString())!;
+        const profile = await profiles.resolveActive(collection.metadata.profile);
+        const prefix = [profile?.prelude, cell.index > 0 ? collection.cellAt(0).document.getText() : '']
+            .filter(value => Boolean(value?.trim())).join('\n\n');
+        const prelude = prefix ? prefix + '\n\n' : '';
+        const client = await getClient(context, profile?.assemblies ?? [], profile?.packages ?? [], profile?.targetFramework, profile?.efCoreVersion, profile?.provider);
+        const options = collectionOptions(profile, collection.metadata.namespaces);
+        const result = await client.complete(prelude + document.getText(), prelude.length + document.offsetAt(position),
+            profile?.assemblies ?? [], options.imports, profile?.packages ?? [], options.db, false, cancellationToken);
+        return result.items?.map(entry => {
+            const item = new vscode.CompletionItem(entry.label, completionKind(entry.kind));
+            item.detail = entry.detail;
+            return item;
+        });
+    }
     const linePrefix = document.lineAt(position.line).text.slice(0, position.character);
     const profileDirective = /^\s*(?:\/\/\s*)?@profile(?:\s+(.*))?$/i.exec(linePrefix);
     if (profileDirective) {

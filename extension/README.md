@@ -9,6 +9,7 @@ Open a file, write plain C#, hit <kbd>Shift</kbd>+<kbd>Enter</kbd>, and see the 
 
 ## Features
 
+- Organize independent scripts into XML-backed `.linqc` / `.csxc` notebooks with saved results.
 - Create and run `.linq` or `.csx` C# scripts instantly.
 - Use your own .NET code directly in scripts.
 - Connect an EF Core `DbContext` and query it through `Db`.
@@ -22,6 +23,49 @@ Open a file, write plain C#, hit <kbd>Shift</kbd>+<kbd>Enter</kbd>, and see the 
 - Switch profiles globally or per script.
 - Automatically manage .NET runtimes, with **.NET 10 LTS** by default.
 ---
+
+## Script collections
+
+Choose **.linqc** from VS Code's **New File** picker, the Explorer context
+menu, or **C#/LINQ collection: .linqc** in the Command Palette. Like the
+`.linq` command, this opens an untitled document without asking you to save
+first, using the selected Explorer folder when available. Save it as
+`.linqc` or `.csxc`; both formats open as a native VS Code notebook and
+store their content as XML.
+
+Use the top toolbar to select a **Profile**, edit collection **Namespaces**,
+choose the **Output Location**, or switch to **XML**. The XML editor has a
+**Collection UI** button to switch back. Switching a dirty document asks you
+to save or cancel; it never silently discards changes.
+
+The first cell is the **shared prelude**. Every script block runs independently
+with the profile prelude followed by this shared setup and that block's code.
+Variables and database contexts are not shared between blocks. **Run All**
+runs each script with its own setup; running the prelude alone checks it.
+
+Use a block's play button or **Shift+Enter** to run it. Set breakpoints in a
+block and press **F5**, or use **Debug Block**, to attach the .NET debugger.
+Cell completion includes profile references, collection namespaces, and
+shared prelude variables.
+
+Results default to an expandable area under each block, including nested
+values, `Dump()` calls, console output, diagnostics, errors, and SQL. Choose
+**Results panel** under **Output Location** for the existing side panel.
+The latest results still belong to their blocks in either mode and are
+saved inside the XML on normal save. Edited inputs mark retained results
+as out of date.
+
+Use **Clear Results** on a block or **Clear All Results** in the toolbar,
+then save, to remove persisted output. **Saved values, console output, SQL,
+and SQL parameters may contain sensitive data. Clear results before sharing
+a collection.** Profile connection strings remain in Secret Storage.
+
+Development checks: `npm test` runs collection format tests;
+`npm run test:integration` runs native notebook execution, persistence,
+completion, XML switching, existing-script regression, and cell breakpoint
+checks in an isolated VS Code host. It uses installed C# and .NET runtime
+extensions. Set `VSCODE_EXECUTABLE` to use an installed VS Code executable;
+otherwise the test launcher downloads a test copy.
 
 ## Query your real app and database
 

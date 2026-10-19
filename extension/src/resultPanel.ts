@@ -175,7 +175,7 @@ function getNonce(): string {
     return randomBytes(16).toString('base64');
 }
 
-function renderBody(result: ExecuteResult): string {
+export function renderBody(result: ExecuteResult): string {
     const consoleBlock = result.output ? renderConsole(result.output, result.outputTruncated) : '';
     const dumps = renderDumps(result);
 

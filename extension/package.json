@@ -54,6 +54,10 @@
   "contributes": {
     "languages": [
       {
+        "id": "xml",
+        "extensions": [".linqc", ".csxc"]
+      },
+      {
         "id": "linq-csx",
         "aliases": [
           "C# Script",
@@ -84,6 +88,16 @@
     ],
     "keybindings": [
       {
+        "command": "linqRunner.collection.run",
+        "key": "shift+enter",
+        "when": "notebookEditorFocused && notebookType == linqRunner.collection"
+      },
+      {
+        "command": "linqRunner.collection.debug",
+        "key": "f5",
+        "when": "notebookEditorFocused && notebookType == linqRunner.collection && !inDebugMode"
+      },
+      {
         "command": "linqRunner.runCurrentFile",
         "key": "alt+x",
         "when": "editorTextFocus && (resourceExtname == .linq || resourceExtname == .csx)"
@@ -100,6 +114,57 @@
       }
     ],
     "commands": [
+      {
+        "command": "linqRunner.newCollection",
+        "title": ".linqc",
+        "category": "C#/LINQ collection",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "linqRunner.collection.run",
+        "title": "Run Block",
+        "icon": "$(play)"
+      },
+      {
+        "command": "linqRunner.collection.debug",
+        "title": "Debug Block",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "linqRunner.collection.profile",
+        "title": "Profile",
+        "icon": "$(account)"
+      },
+      {
+        "command": "linqRunner.collection.namespaces",
+        "title": "Namespaces",
+        "icon": "$(symbol-namespace)"
+      },
+      {
+        "command": "linqRunner.collection.output",
+        "title": "Output Location",
+        "icon": "$(layout)"
+      },
+      {
+        "command": "linqRunner.collection.clear",
+        "title": "Clear Results",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "linqRunner.collection.clearAll",
+        "title": "Clear All Results",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "linqRunner.collection.xml",
+        "title": "XML",
+        "icon": "$(code)"
+      },
+      {
+        "command": "linqRunner.collection.ui",
+        "title": "Collection UI",
+        "icon": "$(notebook)"
+      },
       {
         "command": "linqRunner.runCurrentFile",
         "title": "Another LINQ Tool: Run Current File",
@@ -154,8 +219,71 @@
         }
       }
     ],
+    "notebooks": [
+      {
+        "type": "linqRunner.collection",
+        "displayName": "Another LINQ Tool Collection",
+        "selector": [
+          {
+            "filenamePattern": "*.linqc"
+          },
+          {
+            "filenamePattern": "*.csxc"
+          }
+        ]
+      }
+    ],
     "menus": {
+      "notebook/toolbar": [
+        {
+          "command": "linqRunner.collection.profile",
+          "when": "notebookType == linqRunner.collection",
+          "group": "navigation@1"
+        },
+        {
+          "command": "linqRunner.collection.namespaces",
+          "when": "notebookType == linqRunner.collection",
+          "group": "navigation@2"
+        },
+        {
+          "command": "linqRunner.collection.output",
+          "when": "notebookType == linqRunner.collection",
+          "group": "navigation@3"
+        },
+        {
+          "command": "linqRunner.collection.clearAll",
+          "when": "notebookType == linqRunner.collection",
+          "group": "navigation@4"
+        },
+        {
+          "command": "linqRunner.collection.xml",
+          "when": "notebookType == linqRunner.collection",
+          "group": "navigation@5"
+        }
+      ],
+      "notebook/cell/title": [
+        {
+          "command": "linqRunner.collection.run",
+          "when": "notebookType == linqRunner.collection",
+          "group": "inline@1"
+        },
+        {
+          "command": "linqRunner.collection.debug",
+          "when": "notebookType == linqRunner.collection",
+          "group": "inline@2"
+        },
+        {
+          "command": "linqRunner.collection.clear",
+          "when": "notebookType == linqRunner.collection",
+          "group": "inline@3"
+        }
+      ],
       "editor/title": [
+        {
+          "command": "linqRunner.collection.ui",
+          "when": "resourceExtname == .linqc || resourceExtname == .csxc",
+          "group": "navigation"
+        },
         {
           "command": "linqRunner.runCurrentFile",
           "when": "resourceExtname == .linq || resourceExtname == .csx",
@@ -176,9 +304,16 @@
         {
           "command": "linqRunner.newLinqFile",
           "group": "navigation@90"
+        },
+        {
+          "command": "linqRunner.newCollection",
+          "group": "navigation@91"
         }
       ],
       "file/newFile": [
+        {
+          "command": "linqRunner.newCollection"
+        },
         {
           "command": "linqRunner.newLinqFile"
         }
@@ -226,6 +361,8 @@
   "scripts": {
     "build:runner": "node ./scripts/build-runner.js",
     "compile": "tsc -p ./",
+    "test": "npm run compile && node --test scripts/collection.test.js",
+    "test:integration": "npm run compile && node scripts/run-collection-integration.js",
     "watch": "tsc -watch -p ./",
     "vscode:prepublish": "npm run build:runner && npm run compile",
     "prepackage": "node ./scripts/check-release-node.js",
@@ -236,10 +373,12 @@
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.7.1",
     "typescript": "^5.4.0"
   },
   "dependencies": {
+    "fast-xml-parser": "^5.11.2",
     "vscode-jsonrpc": "^8.2.0"
   }
 }

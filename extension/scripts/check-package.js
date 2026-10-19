@@ -17,6 +17,10 @@ const requiredEntries = new Set([
     'extension/runner/net8.0/LinqRunner.dll',
     'extension/runner/net8.0/LinqRunner.deps.json',
     'extension/runner/net8.0/LinqRunner.runtimeconfig.json',
+    'extension/out/collectionNotebook.js',
+    'extension/out/collectionModel.js',
+    'extension/out/collectionDebug.js',
+    'extension/node_modules/fast-xml-parser/package.json',
 ]);
 
 yauzl.open(packages[0].path, { lazyEntries: true }, (error, zip) => {
