@@ -8,7 +8,7 @@ import { ProfileManager } from './profiles';
 import { ConfigPanel } from './configPanel';
 import { resolveManagedRunner, selectRunnerFramework } from './runtimeManager';
 import { registerLanguageModelTools } from './lmTools';
-import { CollectionNotebook, collectionOptions, collectionType } from './collectionNotebook';
+import { CollectionNotebook, collectionOptions, collectionPrelude, collectionType } from './collectionNotebook';
 let client: RunnerClient | undefined;
 let clientLaunchKey: string | undefined;
 let output: vscode.OutputChannel;
@@ -126,16 +126,16 @@ async function provideCompletionItems(
     if (collection) {
         const cell = collection.getCells().find(item => item.document.uri.toString() === document.uri.toString())!;
         const profile = await profiles.resolveActive(collection.metadata.profile);
-        const prefix = [profile?.prelude, cell.index > 0 ? collection.cellAt(0).document.getText() : '']
-            .filter(value => Boolean(value?.trim())).join('\n\n');
-        const prelude = prefix ? prefix + '\n\n' : '';
+        const prelude = collectionPrelude(cell, profile);
+        const namespaceMatch = /^\s*(?:\/\/\s*)?@namespace\s+(.*)$/i.exec(document.lineAt(position.line).text.slice(0, position.character));
         const client = await getClient(context, profile?.assemblies ?? [], profile?.packages ?? [], profile?.targetFramework, profile?.efCoreVersion, profile?.provider);
         const options = collectionOptions(profile, collection.metadata.namespaces);
         const result = await client.complete(prelude + document.getText(), prelude.length + document.offsetAt(position),
-            profile?.assemblies ?? [], options.imports, profile?.packages ?? [], options.db, false, cancellationToken);
+            profile?.assemblies ?? [], options.imports, profile?.packages ?? [], options.db, Boolean(namespaceMatch), cancellationToken);
         return result.items?.map(entry => {
             const item = new vscode.CompletionItem(entry.label, completionKind(entry.kind));
             item.detail = entry.detail;
+            if (namespaceMatch) { item.range = directiveValueRange(document, position, namespaceMatch[1]); }
             return item;
         });
     }

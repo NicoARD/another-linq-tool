@@ -9,6 +9,16 @@ export const collectionType = 'linqRunner.collection';
 const resultMime = 'application/vnd.another-linq-tool.result+json';
 type GetClient = (profile?: ResolvedProfile) => Promise<RunnerClient>;
 
+export function collectionPrelude(cell: vscode.NotebookCell, profile?: ResolvedProfile): string {
+    const cells = cell.notebook.getCells();
+    const prefix = [
+        cell.metadata.role !== 'namespaces' ? cells.find(item => item.metadata.role === 'namespaces')?.document.getText() : '',
+        cell.metadata.role !== 'namespaces' ? profile?.prelude : '',
+        cell.metadata.role === 'script' ? cells.find(item => item.metadata.role === 'prelude')?.document.getText() : '',
+    ].filter(value => Boolean(value?.trim())).join('\n\n');
+    return prefix ? prefix + '\n\n' : '';
+}
+
 function encode(value: string): Uint8Array { return Buffer.from(value, 'utf8'); }
 function decode(value: Uint8Array): string { return Buffer.from(value).toString('utf8'); }
 
@@ -24,21 +34,27 @@ function output(result: ExecuteResult, location: string): vscode.NotebookCellOut
 export class CollectionSerializer implements vscode.NotebookSerializer {
     deserializeNotebook(content: Uint8Array): vscode.NotebookData {
         const collection = content.length ? parseCollection(decode(content)) : createCollection();
-        const data = new vscode.NotebookData(collection.cells.map(cell => {
+        const namespaces = new vscode.NotebookCellData(vscode.NotebookCellKind.Code,
+            collection.namespaceSource ?? (collection.namespaces.length
+                ? collection.namespaces.map(name => `@namespace ${name}`).join('\n')
+                : '@namespace System.Text'), 'linq-csx');
+        namespaces.metadata = { id: 'collection-namespaces', role: 'namespaces' };
+        const data = new vscode.NotebookData([namespaces, ...collection.cells.map(cell => {
             const value = new vscode.NotebookCellData(vscode.NotebookCellKind.Code, cell.source, 'linq-csx');
             value.metadata = { id: cell.id, role: cell.role, inputHash: cell.inputHash };
             value.outputs = cell.result ? [output(cell.result, collection.outputLocation)] : [];
             return value;
-        }));
-        data.metadata = { profile: collection.profile, namespaces: collection.namespaces, outputLocation: collection.outputLocation };
+        })]);
+        data.metadata = { profile: collection.profile, namespaces: [], outputLocation: collection.outputLocation };
         return data;
     }
 
     serializeNotebook(data: vscode.NotebookData): Uint8Array {
         const collection: ScriptCollection = {
-            profile: data.metadata?.profile ?? '', namespaces: data.metadata?.namespaces ?? [],
+            profile: data.metadata?.profile ?? '', namespaces: [],
+            namespaceSource: data.cells.find(cell => cell.metadata?.role === 'namespaces')?.value ?? '',
             outputLocation: data.metadata?.outputLocation ?? 'inline',
-            cells: data.cells.map((cell, index) => {
+            cells: data.cells.filter(cell => cell.metadata?.role !== 'namespaces').map((cell, index) => {
                 const resultItem = cell.outputs?.flatMap(item => item.items).find(item => item.mime === resultMime);
                 return {
                     id: cell.metadata?.id || randomUUID(), role: index === 0 ? 'prelude' : 'script', source: cell.value,
@@ -80,7 +96,7 @@ export class CollectionNotebook implements vscode.Disposable {
         this.controller = vscode.notebooks.createNotebookController('linqRunner.collection.kernel', collectionType, 'Another LINQ Tool');
         this.controller.supportedLanguages = ['linq-csx'];
         this.controller.executeHandler = (cells) => {
-            for (const cell of cells.filter(item => cells.length === 1 || item.metadata.role !== 'prelude')) { void this.enqueue(cell, false); }
+            for (const cell of cells.filter(item => cells.length === 1 || item.metadata.role === 'script')) { void this.enqueue(cell, false); }
         };
         this.subscriptions.push(this.controller,
             this.statusChanged,
@@ -101,6 +117,8 @@ export class CollectionNotebook implements vscode.Disposable {
             vscode.commands.registerCommand('linqRunner.collection.debug', (cell?: vscode.NotebookCell) => this.run(cell, true)),
             vscode.commands.registerCommand('linqRunner.collection.profile', () => this.selectProfile()),
             vscode.commands.registerCommand('linqRunner.collection.namespaces', () => this.editNamespaces()),
+            vscode.commands.registerCommand('linqRunner.collection.collapse', (cell?: vscode.NotebookCell) => this.fold(cell, true)),
+            vscode.commands.registerCommand('linqRunner.collection.expand', (cell?: vscode.NotebookCell) => this.fold(cell, false)),
             vscode.commands.registerCommand('linqRunner.collection.output', () => this.selectOutput()),
             vscode.commands.registerCommand('linqRunner.collection.clear', (cell?: vscode.NotebookCell) => this.clear(cell, false)),
             vscode.commands.registerCommand('linqRunner.collection.clearAll', () => this.clear(undefined, true)),
@@ -110,9 +128,8 @@ export class CollectionNotebook implements vscode.Disposable {
             vscode.notebooks.registerNotebookCellStatusBarItemProvider(collectionType, {
                 onDidChangeCellStatusBarItems: this.statusChanged.event,
                 provideCellStatusBarItems: async cell => {
-                    const label = cell.metadata.role === 'prelude'
-                        ? `Shared prelude | Profile: ${cell.notebook.metadata.profile || '(Active)'} | Namespaces: ${(cell.notebook.metadata.namespaces ?? []).join(', ') || '(None)'}`
-                        : `Script ${cell.index}`;
+                    const label = cell.metadata.role === 'namespaces' ? `Namespaces | Profile: ${cell.notebook.metadata.profile || '(Active)'}`
+                        : cell.metadata.role === 'prelude' ? 'Shared prelude' : `Script ${cell.index - 1}`;
                     const item = new vscode.NotebookCellStatusBarItem(label, vscode.NotebookCellStatusBarAlignment.Left);
                     item.tooltip = cell.metadata.role === 'prelude' ? 'Runs before every independent script block.' : 'Each block runs with a fresh shared prelude and database context.';
                     if (cell.outputs.length && cell.metadata.inputHash) {
@@ -137,22 +154,33 @@ export class CollectionNotebook implements vscode.Disposable {
         this.normalizing.add(key);
         try {
             const cells = notebook.getCells();
-            const prelude = cells.find(cell => cell.metadata.role === 'prelude');
-            if (!prelude || prelude.index !== 0) {
+            const namespaceCell = cells.find(cell => cell.metadata.role === 'namespaces');
+            if (!namespaceCell || namespaceCell.index !== 0) {
+                const data = new vscode.NotebookCellData(vscode.NotebookCellKind.Code, namespaceCell?.document.getText() ?? '@namespace System.Text', 'linq-csx');
+                data.metadata = { id: 'collection-namespaces', role: 'namespaces' };
+                const edit = new vscode.WorkspaceEdit();
+                edit.set(notebook.uri, [
+                    ...(namespaceCell ? [vscode.NotebookEdit.deleteCells(new vscode.NotebookRange(namespaceCell.index, namespaceCell.index + 1))] : []),
+                    vscode.NotebookEdit.insertCells(0, [data]),
+                ]);
+                await vscode.workspace.applyEdit(edit);
+            }
+            const prelude = notebook.getCells().find(cell => cell.metadata.role === 'prelude');
+            if (!prelude || prelude.index !== 1) {
                 const data = new vscode.NotebookCellData(vscode.NotebookCellKind.Code, prelude?.document.getText() ?? '', 'linq-csx');
                 data.metadata = { ...prelude?.metadata, id: prelude?.metadata.id || randomUUID(), role: 'prelude' };
                 data.outputs = prelude?.outputs ? [...prelude.outputs] : [];
                 const edit = new vscode.WorkspaceEdit();
                 edit.set(notebook.uri, [
                     ...(prelude ? [vscode.NotebookEdit.deleteCells(new vscode.NotebookRange(prelude.index, prelude.index + 1))] : []),
-                    vscode.NotebookEdit.insertCells(0, [data]),
+                    vscode.NotebookEdit.insertCells(1, [data]),
                 ]);
                 await vscode.workspace.applyEdit(edit);
             }
             const ids = new Set<string>();
             const edits: vscode.NotebookEdit[] = [];
             for (const cell of notebook.getCells()) {
-                const role = cell.index === 0 ? 'prelude' : 'script';
+                const role = cell.index === 0 ? 'namespaces' : cell.index === 1 ? 'prelude' : 'script';
                 let id = cell.metadata.id;
                 if (!id || ids.has(id)) { id = randomUUID(); }
                 ids.add(id);
@@ -253,10 +281,7 @@ export class CollectionNotebook implements vscode.Disposable {
     }
 
     private input(cell: vscode.NotebookCell, profile?: ResolvedProfile): { prelude: string; source: string; hash: string } {
-        const prefix = [profile?.prelude, cell.metadata.role !== 'prelude'
-            ? cell.notebook.getCells().find(item => item.metadata.role === 'prelude')?.document.getText() : '']
-            .filter(value => Boolean(value?.trim())).join('\n\n');
-        const prelude = prefix ? prefix + '\n\n' : '';
+        const prelude = collectionPrelude(cell, profile);
         const source = prelude + cell.document.getText();
         const { connectionString: _secret, ...identity } = profile ?? {};
         const hash = createHash('sha256').update(JSON.stringify([source, identity, cell.notebook.metadata.namespaces])).digest('hex');
@@ -274,8 +299,18 @@ export class CollectionNotebook implements vscode.Disposable {
     private async editNamespaces(): Promise<void> {
         const notebook = this.active();
         if (!notebook) { return; }
-        const value = await vscode.window.showInputBox({ title: 'Collection namespaces', value: (notebook.metadata.namespaces ?? []).join(', '), prompt: 'Comma-separated C# namespaces', validateInput: input => input.split(',').some(name => name.trim() && !/^[A-Za-z_][\w]*(\.[A-Za-z_][\w]*)*$/.test(name.trim())) ? 'Enter namespace names, without using or semicolons.' : undefined });
-        if (value !== undefined) { await this.metadata(notebook, vscode.NotebookEdit.updateNotebookMetadata({ ...notebook.metadata, namespaces: [...new Set(value.split(',').map(name => name.trim()).filter(Boolean))] })); }
+        const cell = notebook.getCells().find(item => item.metadata.role === 'namespaces');
+        if (!cell) { return; }
+        await this.fold(cell, false);
+        vscode.window.activeNotebookEditor?.revealRange(new vscode.NotebookRange(cell.index, cell.index + 1));
+        await vscode.commands.executeCommand('notebook.cell.edit');
+    }
+
+    private async fold(candidate: vscode.NotebookCell | undefined, collapse: boolean): Promise<void> {
+        const cell = this.cell(candidate);
+        if (!cell) { return; }
+        await vscode.window.showNotebookDocument(cell.notebook, { selections: [new vscode.NotebookRange(cell.index, cell.index + 1)] });
+        await vscode.commands.executeCommand(collapse ? 'notebook.cell.collapseCellInput' : 'notebook.cell.expandCellInput');
     }
 
     private async selectOutput(): Promise<void> {

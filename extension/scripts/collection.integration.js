@@ -21,7 +21,9 @@ exports.run = async () => {
         assert.equal(firstUntitled.isUntitled, true);
         assert.equal(firstUntitled.notebookType, 'linqRunner.collection');
         assert.equal(comparablePath(firstUntitled.uri.path), comparablePath(vscode.Uri.joinPath(creationDirectory, 'Untitled.linqc').path));
-        assert.equal(firstUntitled.cellCount, 2);
+        assert.equal(firstUntitled.cellCount, 3);
+        assert.equal(firstUntitled.cellAt(0).metadata.role, 'namespaces');
+        assert.equal(firstUntitled.cellAt(0).document.getText(), '@namespace System.Text');
         await vscode.commands.executeCommand('linqRunner.newCollection', creationDirectory);
         const secondUntitled = vscode.window.activeNotebookEditor.notebook;
         assert.equal(secondUntitled.isUntitled, true);
@@ -32,7 +34,7 @@ exports.run = async () => {
         await vscode.workspace.getConfiguration('linqRunner').update('runnerPath', path.join(root, 'runner', 'net8.0', 'LinqRunner.dll'), vscode.ConfigurationTarget.Global);
         const { createCollection, writeCollection, parseCollection } = require('../out/collectionModel');
         const collection = createCollection();
-        collection.cells[0].source = 'var shared = 40;';
+        collection.cells[0].source = 'var shared = new StringBuilder("40").Length + 38;';
         collection.cells[1].source = 'var answer = shared + 2;\nanswer';
         collection.cells.push({ id: 'second', role: 'script', source: 'shared + 3' });
         uri = vscode.Uri.file(path.join(os.tmpdir(), `collection-integration-${Date.now()}.linqc`));
@@ -41,17 +43,28 @@ exports.run = async () => {
         await vscode.window.showNotebookDocument(notebook);
         await vscode.commands.executeCommand('notebook.selectKernel', { id: 'linqRunner.collection.kernel', extension: extension.id });
         assert.equal(notebook.notebookType, 'linqRunner.collection');
-        assert.equal(notebook.cellCount, 3);
+        assert.equal(notebook.cellCount, 4);
+        const namespaceCompletions = await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', notebook.cellAt(0).document.uri, new vscode.Position(0, '@namespace System.Te'.length));
+        assert.ok(namespaceCompletions.items.some(item => (typeof item.label === 'string' ? item.label : item.label.label) === 'System.Text'));
+        await vscode.commands.executeCommand('linqRunner.collection.namespaces');
+        assert.equal(vscode.window.activeNotebookEditor.selection.start, 0);
+        const commands = await vscode.commands.getCommands(true);
+        assert.ok(commands.includes('notebook.cell.collapseCellInput'));
+        assert.ok(commands.includes('notebook.cell.expandCellInput'));
+        await vscode.commands.executeCommand('linqRunner.collection.collapse', notebook.cellAt(2));
+        await vscode.commands.executeCommand('linqRunner.collection.expand', notebook.cellAt(2));
+        assert.equal(notebook.cellAt(2).document.getText(), collection.cells[1].source);
+        results.push('Namespace block includes an example, completes namespace names, and blocks collapse/expand without changing code');
         results.push('Native notebook opens XML with prelude and two script cells');
         aliasUri = vscode.Uri.file(uri.fsPath.replace(/\.linqc$/, '.csxc'));
         await vscode.workspace.fs.writeFile(aliasUri, Buffer.from(writeCollection(collection)));
         const alias = await vscode.workspace.openNotebookDocument(aliasUri);
         assert.equal(alias.notebookType, 'linqRunner.collection');
-        assert.equal(alias.cellAt(0).document.getText(), collection.cells[0].source);
+        assert.equal(alias.cellAt(1).document.getText(), collection.cells[0].source);
         results.push('The .csxc alias opens with the same XML format and notebook controller');
-        await vscode.commands.executeCommand('linqRunner.collection.run', notebook.cellAt(1));
         await vscode.commands.executeCommand('linqRunner.collection.run', notebook.cellAt(2));
-        for (const [index, expected] of [[1, '42'], [2, '43']]) {
+        await vscode.commands.executeCommand('linqRunner.collection.run', notebook.cellAt(3));
+        for (const [index, expected] of [[2, '42'], [3, '43']]) {
             const item = notebook.cellAt(index).outputs.flatMap(output => output.items).find(item => item.mime === 'application/vnd.another-linq-tool.result+json');
             assert.ok(item, `Script ${index} has persisted structured output`);
             const result = JSON.parse(Buffer.from(item.data).toString());
@@ -60,19 +73,20 @@ exports.run = async () => {
         }
         results.push('Both cells execute independently with the shared prelude');
         const completionEdit = new vscode.WorkspaceEdit();
-        completionEdit.insert(notebook.cellAt(2).document.uri, new vscode.Position(0, 0), 'shared.ToString();\n');
+        completionEdit.insert(notebook.cellAt(3).document.uri, new vscode.Position(0, 0), 'shared.ToString();\n');
         await vscode.workspace.applyEdit(completionEdit);
-        const completions = await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', notebook.cellAt(2).document.uri, new vscode.Position(0, 8));
+        const completions = await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', notebook.cellAt(3).document.uri, new vscode.Position(0, 8));
         assert.ok(completions.items.some(item => (typeof item.label === 'string' ? item.label : item.label.label) === 'ToString'));
         results.push('Native cell completion sees the type of shared prelude variables');
         assert.ok(await notebook.save());
         const saved = parseCollection(Buffer.from(await vscode.workspace.fs.readFile(uri)).toString());
+        assert.equal(saved.namespaceSource, '@namespace System.Text');
         assert.equal(saved.cells[1].result.value.text, '42');
         assert.equal(saved.cells[2].result.value.text, '43');
         results.push('Real notebook save persists both structured results into XML');
-        await vscode.commands.executeCommand('linqRunner.collection.clear', notebook.cellAt(1));
-        assert.equal(notebook.cellAt(1).outputs.length, 0);
-        assert.equal(notebook.cellAt(2).outputs.length, 1);
+        await vscode.commands.executeCommand('linqRunner.collection.clear', notebook.cellAt(2));
+        assert.equal(notebook.cellAt(2).outputs.length, 0);
+        assert.equal(notebook.cellAt(3).outputs.length, 1);
         await vscode.commands.executeCommand('linqRunner.collection.clearAll');
         await notebook.save();
         const cleared = parseCollection(Buffer.from(await vscode.workspace.fs.readFile(uri)).toString());
@@ -88,7 +102,7 @@ exports.run = async () => {
             const timer = setTimeout(() => { listener.dispose(); reject(new Error('Prelude was not restored after native cell insertion.')); }, 10000);
             const listener = vscode.workspace.onDidChangeNotebookDocument(event => {
                 if (event.notebook.uri.toString() === current.uri.toString()
-                    && current.cellAt(0).metadata.role === 'prelude' && current.cellCount === 4) {
+                    && current.cellAt(0).metadata.role === 'namespaces' && current.cellAt(1).metadata.role === 'prelude' && current.cellCount === 5) {
                     listener.dispose(); clearTimeout(timer); resolve();
                 }
             });
@@ -98,10 +112,10 @@ exports.run = async () => {
         insertedEdit.set(current.uri, [vscode.NotebookEdit.insertCells(0, [inserted])]);
         await vscode.workspace.applyEdit(insertedEdit);
         await normalized;
-        assert.equal(current.cellAt(0).document.getText(), 'var shared = 40;');
-        assert.equal(current.cellAt(1).document.getText(), 'shared + 4');
+        assert.equal(current.cellAt(1).document.getText(), collection.cells[0].source);
+        assert.equal(current.cellAt(2).document.getText(), 'shared + 4');
         const deletedEdit = new vscode.WorkspaceEdit();
-        deletedEdit.set(current.uri, [vscode.NotebookEdit.deleteCells(new vscode.NotebookRange(1, 2))]);
+        deletedEdit.set(current.uri, [vscode.NotebookEdit.deleteCells(new vscode.NotebookRange(2, 3))]);
         await vscode.workspace.applyEdit(deletedEdit);
         results.push('Native insertion above the prelude preserves its role and restores it to the first position');
         const { RunnerClient } = require('../out/runnerClient');
@@ -113,7 +127,7 @@ exports.run = async () => {
             assert.equal(regular.status, 'success', JSON.stringify(regular));
             results.push('Existing standalone hello.linq still executes through the unchanged RPC path');
         } finally { standaloneCancellation.dispose(); standalone.dispose(); }
-        const debugCell = vscode.window.activeNotebookEditor.notebook.cellAt(1);
+        const debugCell = vscode.window.activeNotebookEditor.notebook.cellAt(2);
         const breakpoint = new vscode.SourceBreakpoint(new vscode.Location(debugCell.document.uri, new vscode.Position(0, 0)));
         vscode.debug.addBreakpoints([breakpoint]);
         let resolveStopped;

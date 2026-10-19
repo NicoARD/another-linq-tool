@@ -117,7 +117,7 @@
       {
         "command": "linqRunner.newCollection",
         "title": ".linqc",
-        "category": "C#/LINQ collection",
+        "category": "C# notebook collection with shared setup and saved results",
         "icon": "$(new-file)"
       },
       {
@@ -144,6 +144,16 @@
         "command": "linqRunner.collection.output",
         "title": "Output Location",
         "icon": "$(layout)"
+      },
+      {
+        "command": "linqRunner.collection.collapse",
+        "title": "Collapse Block",
+        "icon": "$(chevron-up)"
+      },
+      {
+        "command": "linqRunner.collection.expand",
+        "title": "Expand Block",
+        "icon": "$(chevron-down)"
       },
       {
         "command": "linqRunner.collection.clear",
@@ -195,7 +205,7 @@
       {
         "command": "linqRunner.newLinqFile",
         "title": ".linq",
-        "category": "C#/LINQ script",
+        "category": "Single C# / LINQ script",
         "icon": "$(new-file)"
       }
     ],
@@ -262,6 +272,16 @@
         }
       ],
       "notebook/cell/title": [
+        {
+          "command": "linqRunner.collection.collapse",
+          "when": "notebookType == linqRunner.collection && !notebookCellInputIsCollapsed",
+          "group": "inline@4"
+        },
+        {
+          "command": "linqRunner.collection.expand",
+          "when": "notebookType == linqRunner.collection && notebookCellInputIsCollapsed",
+          "group": "inline@4"
+        },
         {
           "command": "linqRunner.collection.run",
           "when": "notebookType == linqRunner.collection",

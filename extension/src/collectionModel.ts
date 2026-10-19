@@ -13,6 +13,7 @@ export interface CollectionCell {
 export interface ScriptCollection {
     profile: string;
     namespaces: string[];
+    namespaceSource?: string;
     outputLocation: 'inline' | 'panel';
     cells: CollectionCell[];
 }
@@ -79,7 +80,13 @@ export function parseCollection(xml: string): ScriptCollection {
     if (!namespaces.every((value: unknown) => typeof value === 'string')) {
         throw new Error('Namespaces must contain Namespace text elements.');
     }
-    return { profile: root['@_profile'] ?? '', namespaces, outputLocation, cells };
+    if (root.NamespaceSource !== undefined && typeof root.NamespaceSource !== 'string') {
+        throw new Error('NamespaceSource must contain C# text, not XML elements.');
+    }
+    return {
+        profile: root['@_profile'] ?? '', namespaces, outputLocation, cells,
+        ...(root.NamespaceSource !== undefined ? { namespaceSource: root.NamespaceSource } : {}),
+    };
 }
 
 export function writeCollection(collection: ScriptCollection): string {
@@ -87,6 +94,7 @@ export function writeCollection(collection: ScriptCollection): string {
         Collection: {
             '@_version': '1', '@_profile': collection.profile, '@_outputLocation': collection.outputLocation,
             Namespaces: { Namespace: collection.namespaces },
+            ...(collection.namespaceSource !== undefined ? { NamespaceSource: collection.namespaceSource } : {}),
             Cell: collection.cells.map(cell => ({
                 '@_id': cell.id, '@_role': cell.role,
                 ...(cell.result && cell.inputHash ? { '@_inputHash': cell.inputHash } : {}),

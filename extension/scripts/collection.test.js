@@ -52,3 +52,10 @@ test('missing prelude, duplicate ids, invalid outputs and DTDs are rejected', ()
         '<!DOCTYPE Collection><Collection version="1"><Cell id="x" role="prelude"/></Collection>',
     ]) { assert.throws(() => parseCollection(xml)); }
 });
+
+test('editable namespace directive block round trips independently from legacy imports', () => {
+    const { createCollection, parseCollection, writeCollection } = require('../out/collectionModel');
+    const collection = createCollection();
+    collection.namespaceSource = '@namespace System.Text\r\n@namespace System.Globalization\n';
+    assert.deepEqual(parseCollection(writeCollection(collection)), collection);
+});

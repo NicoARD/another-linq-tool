@@ -2,10 +2,29 @@
 
 **Interactive C# scripting, right inside VS Code.**
 
-Open a file, write plain C#, hit <kbd>Shift</kbd>+<kbd>Enter</kbd>, and see the result instantly — no console project, no boilerplate, no need for `Main()`.
+Write a quick script or organize related queries into a notebook collection. Run with <kbd>Shift</kbd>+<kbd>Enter</kbd>, inspect the results, and debug with <kbd>F5</kbd>, without creating a console project.
 
 ![Another LINQ Tool in action](https://i.imgur.com/QdQChSy.gif)
 
+
+## Get Started
+
+1. Open VS Code's **New File** picker and choose **.linq** for a single script or **.linqc** for a collection. Both also appear in the Explorer context menu and Command Palette.
+2. Start with the example below, or select a profile to use your application assemblies, packages, and database context.
+3. Press <kbd>Shift</kbd>+<kbd>Enter</kbd>. A final expression without a semicolon displays its value automatically.
+
+```csharp
+Enumerable.Range(1, 10)
+  .Where(number => number % 2 == 0)
+  .Select(number => new { Number = number, Square = number * number })
+```
+
+| Choose | File Types | Experience |
+| --- | --- | --- |
+| Single script | `.linq`, `.csx` | One script with results in a side panel |
+| Collection | `.linqc`, `.csxc` | Notebook cells, shared setup, and results saved with the file |
+
+The extension manages a compatible .NET runtime. Package restoration additionally requires a compatible .NET SDK; see [Requirements](#requirements).
 
 ## Features
 
@@ -27,7 +46,7 @@ Open a file, write plain C#, hit <kbd>Shift</kbd>+<kbd>Enter</kbd>, and see the 
 ## Script collections
 
 Choose **.linqc** from VS Code's **New File** picker, the Explorer context
-menu, or **C#/LINQ collection: .linqc** in the Command Palette. Like the
+menu, or search for **.linqc** in the Command Palette. Like the
 `.linq` command, this opens an untitled document without asking you to save
 first, using the selected Explorer folder when available. Save it as
 `.linqc` or `.csxc`; both formats open as a native VS Code notebook and
@@ -38,7 +57,19 @@ choose the **Output Location**, or switch to **XML**. The XML editor has a
 **Collection UI** button to switch back. Switching a dirty document asks you
 to save or cancel; it never silently discards changes.
 
-The first cell is the **shared prelude**. Every script block runs independently
+The first cell is an editable **Namespaces** block with IntelliSense. Add
+one directive per line; new collections include this working example:
+
+```csharp
+@namespace System.Text
+```
+
+For example, scripts can then use `new StringBuilder()` without qualifying
+the type name. The **Namespaces** toolbar button focuses this block instead
+of opening a comma-separated input. Imports apply to the shared prelude and
+every script block.
+
+The second cell is the **shared prelude**. Every script block runs independently
 with the profile prelude followed by this shared setup and that block's code.
 Variables and database contexts are not shared between blocks. **Run All**
 runs each script with its own setup; running the prelude alone checks it.
@@ -47,6 +78,9 @@ Use a block's play button or **Shift+Enter** to run it. Set breakpoints in a
 block and press **F5**, or use **Debug Block**, to attach the .NET debugger.
 Cell completion includes profile references, collection namespaces, and
 shared prelude variables.
+
+Use **Collapse Block** / **Expand Block** on the cell toolbar to fold or
+reopen a code block. Collapsing code does not clear or rerun its results.
 
 Results default to an expandable area under each block, including nested
 values, `Dump()` calls, console output, diagnostics, errors, and SQL. Choose
@@ -60,12 +94,52 @@ then save, to remove persisted output. **Saved values, console output, SQL,
 and SQL parameters may contain sensitive data. Clear results before sharing
 a collection.** Profile connection strings remain in Secret Storage.
 
-Development checks: `npm test` runs collection format tests;
-`npm run test:integration` runs native notebook execution, persistence,
-completion, XML switching, existing-script regression, and cell breakpoint
-checks in an isolated VS Code host. It uses installed C# and .NET runtime
-extensions. Set `VSCODE_EXECUTABLE` to use an installed VS Code executable;
-otherwise the test launcher downloads a test copy.
+### Collection Walkthrough
+
+Keep the namespace example in the first block:
+
+```csharp
+@namespace System.Text
+```
+
+Add this setup to the shared prelude:
+
+```csharp
+var prefix = "Query";
+var numbers = Enumerable.Range(1, 5);
+```
+
+In the first script block, inspect a projection:
+
+```csharp
+numbers.Select(number => new { Number = number, Square = number * number })
+```
+
+Add another script block and run it independently:
+
+```csharp
+new StringBuilder(prefix).Append(": ").AppendJoin(", ", numbers).ToString()
+```
+
+Either block can run first. The prelude runs again each time; executing one
+script does not define variables for another. **Run All** applies this same
+independent setup to each script, rather than building a shared session.
+
+### Collection Controls
+
+| Control | Action |
+| --- | --- |
+| **Profile** | Choose a collection profile, or follow the active profile |
+| **Namespaces** | Focus and expand the namespace directive block |
+| **Output Location** | Show results inline or in the results panel |
+| **Run Block** / **Debug Block** | Execute or debug the selected block |
+| **Collapse Block** / **Expand Block** | Fold or reopen code without removing results |
+| **Clear Results** / **Clear All Results** | Remove one block's output or all collection output |
+| **XML** / **Collection UI** | Switch between source and notebook editing |
+
+Saving persists the latest results, not a run history. Clearing output also
+requires a save to remove it from the file on disk. Existing collection
+namespace lists are displayed as editable `@namespace` lines automatically.
 
 ## Query your real app and database
 
@@ -193,14 +267,25 @@ Supported kinds: `Program`, `Expression`, `Statements`. LINQPad profiles and LIN
 | **Another LINQ Tool: Restart Runner** | Stop and start the local runner process. |
 | **Another LINQ Tool: Select Profile** | Change the active execution profile. |
 | **Another LINQ Tool: Configure Profiles** | Open the profile editor. |
-| **Another LINQ Tool: Open Settings** | Open this extension's VS Code settings. |
+| **Another LINQ Tool: Configure Global Profiles** | Open the shared profile editor. |
+| **.linq** | Create an untitled single script in the selected folder. |
+| **.linqc** | Create an untitled notebook collection in the selected folder. |
+
+Search for `.linq` or `.linqc` in the Command Palette to find their creation
+commands. Collection-specific actions are listed in [Collection Controls](#collection-controls).
+
+| Shortcut | Single Script | Collection |
+| --- | --- | --- |
+| <kbd>Shift</kbd>+<kbd>Enter</kbd> | Run the active script | Run the focused block |
+| <kbd>F5</kbd> | Debug the active script | Debug the focused block |
+| <kbd>Alt</kbd>+<kbd>X</kbd> | Run the active script | Use the block's Run action |
 
 </details>
 
 <details>
 <summary><strong>Settings</strong></summary>
 
-Open **Another LINQ Tool: Open Settings**, or edit VS Code user settings directly.
+Open VS Code **Settings** and search for `linqRunner`, or edit user settings directly.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
@@ -233,16 +318,26 @@ Use absolute assembly paths in global settings. Disabled entries may be written 
 
 </details>
 
+<a id="requirements"></a>
 <details>
 <summary><strong>Requirements</strong></summary>
 
-- VS Code 1.85 or newer.
+- VS Code 1.85 or newer, with Microsoft's C# extension and .NET Install Tool
+  installed as extension dependencies.
 
 The extension ships one portable roll-forward runner and depends on Microsoft's .NET Install Tool. It reuses an existing compatible runtime when available, otherwise it downloads one for your system — so you don't need to install .NET manually, though the first run may need a network connection.
 
 .NET 10 LTS is used by default. When a profile assembly targets a newer framework, the extension detects it from target-framework metadata and launches the same bundled runner on that compatible runtime.
 
 Assemblies that depend on .NET Framework-only APIs or otherwise incompatible runtimes may not load.
+
+**NuGet packages require an SDK.** The runner restores packages by building
+a temporary SDK project. Install an SDK capable of targeting your selected
+runtime and ensure `dotnet` is available on PATH. Downloading a runtime
+through the .NET Install Tool does not satisfy this requirement.
+
+Scripts run with your account's permissions and are not sandboxed. Only
+execute trusted code and load trusted assemblies and packages.
 
 </details>
 
@@ -258,8 +353,18 @@ Assemblies that depend on .NET Framework-only APIs or otherwise incompatible run
 - **A NuGet-enabled profile cannot restore:** install an SDK capable of targeting the selected runtime (runtime acquisition installs a runtime, not an SDK).
 - **An EF Core profile reports incompatible versions:** leave **EF Core version** on Automatic when the provider is published beside your app, or select the exact EF version used to build the `DbContext`.
 - **A script or package fails:** open the **Another LINQ Tool** output channel for runner diagnostics.
+- **A collection profile was renamed or deleted:** choose an existing profile from the notebook toolbar. A missing explicit collection profile is an error, rather than silently switching database connections.
+- **Saved results look different from the current code:** the output is from the last run. An out-of-date indicator marks changed inputs; rerun the block or clear its results.
+- **Collection XML will not open:** use **Reopen Editor With...** to select the text editor, repair the reported XML, then switch back to **Collection UI**. Invalid files are not replaced with empty collections.
+- **You want to share a collection:** clear its results and save first. Inspect the XML for remaining sensitive source text; clearing output does not remove secrets typed into code.
 
 </details>
+
+## Contributing
+
+Build instructions, repository layout, sample projects, automated tests,
+and native notebook/debugger checks are documented in the
+[repository README](https://github.com/NicoARD/another-linq-tool#readme).
 
 <details>
 <summary><strong>License</strong></summary>
