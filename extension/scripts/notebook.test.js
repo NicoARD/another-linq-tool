@@ -1,6 +1,16 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 
+test('stateful notebook cells expose collapse and expand toolbar controls', () => {
+    const manifest = require('../package.json');
+    for (const action of ['collapse', 'expand']) {
+        const command = `linqRunner.notebook.${action}`;
+        assert.ok(manifest.contributes.commands.some(item => item.command === command));
+        assert.ok(manifest.contributes.menus['notebook/cell/title'].some(item => item.command === command
+            && item.when.includes('notebookType == linqRunner.notebook')));
+    }
+});
+
 test('stateful notebook format preserves code, Markdown, and results without setup cells', () => {
     const { createNotebook, parseNotebook, writeNotebook } = require('../out/notebookModel');
     const notebook = createNotebook();

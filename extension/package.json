@@ -119,6 +119,8 @@
       { "command": "linqRunner.newNotebook", "title": ".linqnb - Stateful C# Notebook", "category": "Stateful C# notebook with code and Markdown cells", "icon": "$(new-file)" },
       { "command": "linqRunner.notebook.run", "title": "Run Cell", "icon": "$(play)" },
       { "command": "linqRunner.notebook.debug", "title": "Debug Cell", "icon": "$(debug-alt)" },
+      { "command": "linqRunner.notebook.collapse", "title": "Collapse Cell", "icon": "$(chevron-up)" },
+      { "command": "linqRunner.notebook.expand", "title": "Expand Cell", "icon": "$(chevron-down)" },
       { "command": "linqRunner.notebook.runAll", "title": "Run All Cells", "icon": "$(run-all)" },
       { "command": "linqRunner.notebook.restart", "title": "Restart Kernel", "icon": "$(debug-restart)" },
       { "command": "linqRunner.notebook.restartAndRunAll", "title": "Restart and Run All", "icon": "$(refresh)" },
@@ -292,6 +294,8 @@
         }
       ],
       "notebook/cell/title": [
+        { "command": "linqRunner.notebook.collapse", "when": "notebookType == linqRunner.notebook && !notebookCellInputIsCollapsed", "group": "inline@4" },
+        { "command": "linqRunner.notebook.expand", "when": "notebookType == linqRunner.notebook && notebookCellInputIsCollapsed", "group": "inline@4" },
         { "command": "linqRunner.notebook.run", "when": "notebookType == linqRunner.notebook && notebookCellType == code", "group": "inline@1" },
         { "command": "linqRunner.notebook.debug", "when": "notebookType == linqRunner.notebook && notebookCellType == code", "group": "inline@2" },
         { "command": "linqRunner.notebook.clear", "when": "notebookType == linqRunner.notebook && notebookCellType == code", "group": "inline@3" },

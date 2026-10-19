@@ -1,15 +1,18 @@
 # Another LINQ Tool
 
-**Interactive C# scripting, right inside VS Code.**
+**Notebook-first C# scripting, right inside VS Code.**
 
-Write a quick script or organize related queries into a notebook collection. Run with <kbd>Shift</kbd>+<kbd>Enter</kbd>, inspect the results, and debug with <kbd>F5</kbd>, without creating a console project.
+Run and debug C# like a data scientist: stateful notebooks with code and
+Markdown cells, independent query collections with shared setup, or quick
+single scripts. Press <kbd>Shift</kbd>+<kbd>Enter</kbd>, inspect the results,
+and debug with <kbd>F5</kbd> — no console project, no boilerplate.
 
-![Another LINQ Tool in action](https://i.imgur.com/QdQChSy.gif)
+![Another LINQ Tool in action](images/Demo.gif)
 
 
 ## Get Started
 
-1. Open VS Code's **New File** picker and choose **.linq - C# Script**, **.linqc - Independent Query Collection**, or **.linqnb - Stateful C# Notebook**. All also appear in the Explorer context menu and Command Palette.
+1. Open VS Code's **New File** picker and choose **.linqnb - Stateful C# Notebook**, **.linqc - Independent Query Collection**, or **.linq - C# Script**. All also appear in the Explorer context menu and Command Palette.
 2. Start with the example below, or select a profile to use your application assemblies, packages, and database context.
 3. Press <kbd>Shift</kbd>+<kbd>Enter</kbd>. A final expression without a semicolon displays its value automatically.
 
@@ -21,32 +24,53 @@ Enumerable.Range(1, 10)
 
 | Choose | File Types | Experience |
 | --- | --- | --- |
-| Single script | `.linq`, `.csx` | One script with results in a side panel |
-| Collection | `.linqc`, `.csxc` | Notebook cells, shared setup, and results saved with the file |
 | Stateful notebook | `.linqnb`, `.csxnb` | Code and Markdown cells sharing variables, imports, and database state |
+| Collection | `.linqc`, `.csxc` | Notebook cells, shared setup, and results saved with the file |
+| Single script | `.linq`, `.csx` | One script with results in a side panel |
 
 The extension manages a compatible .NET runtime. Package restoration additionally requires a compatible .NET SDK; see [Requirements](#requirements).
 
 ## Features
 
+- **Stateful `.linqnb` / `.csxnb` notebooks** with code and Markdown cells, shared variables, per-notebook kernels, and restart controls.
+- **Independent `.linqc` / `.csxc` collections** with a shared prelude, saved results, and collapsible blocks.
 - Create and run `.linq` or `.csx` C# scripts instantly.
-- Use your own .NET code directly in scripts.
+- Use your own .NET code directly in scripts and notebooks.
 - Connect an EF Core `DbContext` and query it through `Db`.
-- Organize independent scripts into XML-backed `.linqc` / `.csxc` notebooks with saved results.
 - Create reusable profiles for your code, packages, setup, and databases.
-- Get autocomplete for your code, packages, and `DbContext`.
+- Get autocomplete for your code, packages, and `DbContext` — including live notebook state.
 - Inspect results with `Dump()` and expandable objects.
 - Use `async`/`await` and async EF Core queries.
-- Run scripts with **Shift+Enter** or the play button.
+- Run cells and scripts with **Shift+Enter** or the play button.
 - Debug with breakpoints and **F5**, even without saving.
 - Run LINQPad C# query files with partial compatibility.
-- Switch profiles globally or per script.
+- Switch profiles globally, per script, or per notebook.
 - Automatically manage .NET runtimes, with **.NET 10 LTS** by default.
+---
+
+## Notebooks
+
+Two notebook experiences build on the same native VS Code editor:
+
+**Stateful notebooks** (`.linqnb` / `.csxnb`) work like Jupyter: each cell runs
+against the live session, so variables, functions, and `using` statements you
+create in one cell are available to the next. Add Markdown cells for notes.
+Restart the kernel to clear state.
+
+**Collections** (`.linqc` / `.csxc`) keep blocks independent: a shared prelude
+runs before every block, so each block starts from the same setup without
+sharing variables. Results are saved with the file.
+
+Both offer cell IntelliSense, breakpoints with F5, saved outputs, clear
+controls, and an XML/UI view switcher.
+
 ---
 
 ## Stateful Notebooks
 
 Available starting in **1.5.1**. For independent queries with shared setup, use the script collections introduced in **1.5.0** instead.
+
+![Stateful notebooks](images/NotebookDemo.png)
 
 Choose **.linqnb - Stateful C# Notebook** to create a notebook with ordinary C# and Markdown cells.
 Save it as `.linqnb` or `.csxnb`. New notebooks start with an editable namespace

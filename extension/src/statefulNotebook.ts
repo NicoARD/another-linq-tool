@@ -78,6 +78,8 @@ export class StatefulNotebook implements vscode.Disposable {
             vscode.commands.registerCommand('linqRunner.newNotebook', (resource?: vscode.Uri) => this.create(resource)),
             vscode.commands.registerCommand('linqRunner.notebook.run', (cell?: vscode.NotebookCell) => this.run(cell, false)),
             vscode.commands.registerCommand('linqRunner.notebook.debug', (cell?: vscode.NotebookCell) => this.run(cell, true)),
+            vscode.commands.registerCommand('linqRunner.notebook.collapse', (cell?: vscode.NotebookCell) => this.fold(cell, true)),
+            vscode.commands.registerCommand('linqRunner.notebook.expand', (cell?: vscode.NotebookCell) => this.fold(cell, false)),
             vscode.commands.registerCommand('linqRunner.notebook.runAll', () => {
                 const notebook = this.active();
                 return notebook && this.schedule(notebook.getCells(), false);
@@ -147,6 +149,15 @@ export class StatefulNotebook implements vscode.Disposable {
     private run(candidate: vscode.NotebookCell | undefined, debug: boolean): Promise<void> | undefined {
         const cell = this.focused(candidate);
         return cell ? this.schedule([cell], debug) : undefined;
+    }
+
+    private async fold(candidate: vscode.NotebookCell | undefined, collapse: boolean): Promise<void> {
+        const cell = this.focused(candidate);
+        if (!cell) { return; }
+        await vscode.window.showNotebookDocument(cell.notebook, {
+            selections: [new vscode.NotebookRange(cell.index, cell.index + 1)],
+        });
+        await vscode.commands.executeCommand(collapse ? 'notebook.cell.collapseCellInput' : 'notebook.cell.expandCellInput');
     }
 
     private async profile(notebook: vscode.NotebookDocument): Promise<ResolvedProfile | undefined> {
