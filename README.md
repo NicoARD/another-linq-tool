@@ -1,5 +1,6 @@
 # Another LINQ Tool
 
+[Install from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=N-Tsoulos.another-linq-tool)
 Run and debug C# queries against your own code, packages, and EF Core models without creating a console application. Another LINQ Tool combines a VS Code extension with a standalone .NET runner, supporting both individual scripts and notebook-style script collections.
 
 | Workflow | File Types | Best For |
@@ -17,7 +18,7 @@ It supports ordinary C# scripts, LINQPad-style Expression, Statements, and Progr
 
 Create a `.linq` script or `.linqc` collection from VS Code's **New File** picker, the Command Palette, or Explorer context menu. Both open untitled, so you can start editing without saving first. The Explorer command uses the selected folder and avoids existing filenames.
 
-Editor autocomplete uses the active script profile, including its prelude, imports, referenced DLLs, NuGet packages, and typed `DbContext`. Profile and namespace metadata can also be completed in native directives and LINQPad query headers.
+Editor IntelliSense uses the active script profile, including its prelude, imports, referenced DLLs, NuGet packages, and typed `DbContext`. Profile and namespace metadata can also be completed in native directives and LINQPad query headers.
 
 LINQPad `Expression` and `Statements` query kinds are interchangeable in Another LINQ Tool. Both are executed dynamically: statements run normally, and a final expression without a semicolon is automatically displayed.
 
