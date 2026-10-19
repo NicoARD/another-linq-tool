@@ -7,6 +7,7 @@ Run and debug C# queries against your own code, packages, and EF Core models wit
 | --- | --- | --- |
 | Single script | `.linq`, `.csx` | A quick query, experiment, or reusable script |
 | Script collection | `.linqc`, `.csxc` | Independent queries with shared setup and saved results |
+| Stateful notebook | `.linqnb`, `.csxnb` | Ordered C# and Markdown cells with shared live variables |
 
 Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to run a script or the focused collection block. Set breakpoints and press <kbd>F5</kbd> to debug. Final expressions and `Dump()` calls render as inspectable values, objects, and tables.
 
@@ -38,6 +39,40 @@ Results appear beneath each block by default, including nested values, console o
 
 See the [collection walkthrough](extension/README.md#script-collections) for an example.
 
+## Stateful Notebooks
+
+Available starting in **1.5.1**. Independent script collections were introduced in **1.5.0**.
+
+Choose **.linqnb - Stateful C# Notebook** from New File, Explorer, or the Command Palette. Save as
+`.linqnb` or `.csxnb`; both use a separate XML-backed notebook format with
+ordinary code and Markdown cells. New notebooks start with an editable
+`@namespace System.Text` block with IntelliSense; run it before dependent
+cells, or use Run All. There is no prelude, and the namespace block follows
+normal stateful execution rather than rerunning before every cell.
+
+Run code cells individually or use **Run All Cells** to execute from top to
+bottom, skipping Markdown and stopping at the first failure. Variables,
+functions, `using` statements, and a configured `Db` persist within that
+notebook's runner process. Each notebook has its own process, isolated from
+other notebooks, scripts, and independent collections.
+
+**Restart Kernel** clears live state without clearing saved outputs.
+**Restart and Run All** rebuilds state from the document. Changing profiles
+requires a restart. Profile imports, packages, and database options apply;
+profile prelude code is not automatically executed in stateful notebooks.
+Put setup code in an ordinary cell instead.
+
+Code, Markdown, latest results, and execution order save in XML. Reopening
+a closed notebook starts a fresh kernel; saved output never restores live
+variables or database connections. Editing an executed cell does not undo
+its earlier effects. Compilation failures preserve previous state; runtime
+failures may leave mutations behind. Cancellation resets the affected kernel.
+
+Shift+Enter runs the focused code cell and F5 debugs it. Completion uses
+executed submissions, not unexecuted cells earlier in the document. The
+debugger supports cell breakpoints and stepping; simple watch expressions
+for variables from earlier submissions are bridged to Roslyn session state.
+
 ## Build From Source
 
 You need:
@@ -68,7 +103,8 @@ Run these commands from the `extension` directory:
 | Command | Checks |
 | --- | --- |
 | `npm run compile` | TypeScript compilation |
-| `npm test` | Compilation and collection XML round-trip/validation tests |
+| `npm test` | Compilation and collection/notebook XML round-trip tests |
+| `npm run test:stateful` | Runner build and shared-state, restart, completion, and cancellation-isolation tests |
 | `npm run build:runner` | Publishes the bundled portable .NET runner |
 | `npm run test:integration` | Native VS Code notebook and debugger integration |
 | `npm run release:check` | Runner publish, extension compilation, VSIX packaging, and payload validation |

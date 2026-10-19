@@ -21,7 +21,7 @@ async function main() {
             vscodeExecutablePath: process.env.VSCODE_EXECUTABLE,
             extensionDevelopmentPath: root,
             extensionTestsPath: join(__dirname, 'collection.integration.js'),
-            extensionTestsEnv: { LINQ_COLLECTION_REPORT: report },
+            extensionTestsEnv: { LINQ_COLLECTION_REPORT: report, LINQ_TEST_RUNNER: process.env.LINQ_TEST_RUNNER ?? '' },
             launchArgs: [
                 '--user-data-dir', join(temporary, 'user'), '--extensions-dir', extensions,
                 '--disable-workspace-trust', '--skip-welcome', '--skip-release-notes',

@@ -9,7 +9,7 @@ Write a quick script or organize related queries into a notebook collection. Run
 
 ## Get Started
 
-1. Open VS Code's **New File** picker and choose **.linq** for a single script or **.linqc** for a collection. Both also appear in the Explorer context menu and Command Palette.
+1. Open VS Code's **New File** picker and choose **.linq - C# Script**, **.linqc - Independent Query Collection**, or **.linqnb - Stateful C# Notebook**. All also appear in the Explorer context menu and Command Palette.
 2. Start with the example below, or select a profile to use your application assemblies, packages, and database context.
 3. Press <kbd>Shift</kbd>+<kbd>Enter</kbd>. A final expression without a semicolon displays its value automatically.
 
@@ -23,6 +23,7 @@ Enumerable.Range(1, 10)
 | --- | --- | --- |
 | Single script | `.linq`, `.csx` | One script with results in a side panel |
 | Collection | `.linqc`, `.csxc` | Notebook cells, shared setup, and results saved with the file |
+| Stateful notebook | `.linqnb`, `.csxnb` | Code and Markdown cells sharing variables, imports, and database state |
 
 The extension manages a compatible .NET runtime. Package restoration additionally requires a compatible .NET SDK; see [Requirements](#requirements).
 
@@ -42,6 +43,67 @@ The extension manages a compatible .NET runtime. Package restoration additionall
 - Switch profiles globally or per script.
 - Automatically manage .NET runtimes, with **.NET 10 LTS** by default.
 ---
+
+## Stateful Notebooks
+
+Available starting in **1.5.1**. For independent queries with shared setup, use the script collections introduced in **1.5.0** instead.
+
+Choose **.linqnb - Stateful C# Notebook** to create a notebook with ordinary C# and Markdown cells.
+Save it as `.linqnb` or `.csxnb`. New notebooks start with an editable namespace
+block containing `@namespace System.Text`, with namespace-name IntelliSense.
+Add one `@namespace` directive per line. Run this block first, or use Run All,
+to make its imports available to subsequent cells. There is no prelude.
+The namespace block is an ordinary code cell, so it can be moved or edited;
+you can also write regular `using` statements in other code cells.
+
+For example, execute this code cell first:
+
+```csharp
+using System.Text;
+var message = new StringBuilder("Hello");
+```
+
+Then execute another code cell:
+
+```csharp
+message.Append(" from the next cell").ToString()
+```
+
+The second cell uses the same live `message` object. Add Markdown cells for
+headings, explanations, and notes through the native notebook controls.
+
+| Control | Behavior |
+| --- | --- |
+| **Run Cell** / **Shift+Enter** | Execute the focused code cell against current state |
+| **Run All Cells** | Execute code cells in document order; skip Markdown and stop on failure |
+| **Debug Cell** / **F5** | Debug a code cell in the current session |
+| **Restart Kernel** | Clear variables, imports, functions, and database state for this notebook |
+| **Restart and Run All** | Start fresh and rebuild state by executing all code cells |
+| **Notebook Profile** | Choose a profile and restart its kernel |
+| **Clear Cell Results** / **Clear All Notebook Results** | Remove output without clearing variables |
+| **XML** / **Notebook UI** | Switch between the XML source and notebook editor |
+
+Each notebook owns an isolated runner. Restarting or cancelling one does
+not affect another notebook or an independent collection. A profile's
+imports, assemblies, packages, and configured `Db` are available, but its
+prelude is not run automatically. Put reusable setup in an ordinary cell.
+The configured DbContext stays alive for that notebook session.
+
+**Execution order matters.** Editing or deleting a cell does not reverse
+its previous effects. Completion reflects executed submissions, not simply
+the cells above the cursor. Compilation errors leave prior state intact;
+runtime errors can leave partial mutations. Cancellation resets the kernel,
+so use **Restart and Run All** to restore a known state afterward.
+
+Save to persist code, Markdown, execution counts, and the latest outputs.
+Live variables and connections are never saved: reopening a closed notebook
+starts fresh even when old results are visible. Clear sensitive output and
+save before sharing, just as with collections.
+
+Cell debugging supports breakpoints, source navigation, and stepping.
+Simple variable-name watches from earlier submissions are supported through
+the session bridge; complex debugger expressions involving earlier
+submissions may be limited by the .NET debugger's Roslyn script support.
 
 ## Script collections
 

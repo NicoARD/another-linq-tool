@@ -26,12 +26,10 @@ function mapSources(message: unknown, sources: CellSource[], toAdapter: boolean)
     }
 }
 
-export async function prepareCellDebug(
+export async function writeCellSources(
     context: vscode.ExtensionContext,
     notebook: vscode.NotebookDocument,
-    cell: vscode.NotebookCell,
-    client: RunnerClient,
-): Promise<{ session: vscode.DebugSession; sourcePath: string }> {
+): Promise<CellSource[]> {
     const identity = createHash('sha256').update(notebook.uri.toString()).digest('hex').slice(0, 24);
     const directory = vscode.Uri.joinPath(context.globalStorageUri, 'collection-debug', identity);
     await vscode.workspace.fs.createDirectory(directory);
@@ -42,10 +40,29 @@ export async function prepareCellDebug(
         await vscode.workspace.fs.writeFile(file, Buffer.from(item.document.getText(), 'utf8'));
         sources.push({ uri: item.document.uri, path: realpathSync.native(file.fsPath) });
     }
+    return sources;
+}
+
+export async function prepareCellDebug(
+    context: vscode.ExtensionContext,
+    notebook: vscode.NotebookDocument,
+    cell: vscode.NotebookCell,
+    client: RunnerClient,
+    stateful = false,
+): Promise<{ session: vscode.DebugSession; sourcePath: string }> {
+    const identity = createHash('sha256').update(notebook.uri.toString()).digest('hex').slice(0, 24);
+    const sources = await writeCellSources(context, notebook);
+    const previousVariables = stateful ? new Set(await client.notebookVariables()) : new Set<string>();
     const name = `Another LINQ Tool: Collection ${cell.index}`;
     const tracker = vscode.debug.registerDebugAdapterTrackerFactory('coreclr', {
         createDebugAdapterTracker: session => session.configuration.linqCollection === identity ? {
-            onWillReceiveMessage: message => mapSources(message, sources, true),
+            onWillReceiveMessage: message => {
+                mapSources(message, sources, true);
+                if (message.command === 'evaluate' && previousVariables.has(message.arguments?.expression?.trim())) {
+                    const name = JSON.stringify(message.arguments.expression.trim());
+                    message.arguments.expression = `LinqRunner.Scripting.ScriptExecutor.NotebookState.GetVariable(${name}).Value`;
+                }
+            },
             onDidSendMessage: message => mapSources(message, sources, false),
         } : undefined,
     });

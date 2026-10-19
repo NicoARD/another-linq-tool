@@ -3,7 +3,7 @@
   "displayName": "Another LINQ Tool",
   "description": "Run C# scripts as interactive LINQ query windows.",
   "icon": "./icon.png",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "publisher": "N-Tsoulos",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
@@ -55,7 +55,7 @@
     "languages": [
       {
         "id": "xml",
-        "extensions": [".linqc", ".csxc"]
+        "extensions": [".linqc", ".csxc", ".linqnb", ".csxnb"]
       },
       {
         "id": "linq-csx",
@@ -87,6 +87,8 @@
       }
     ],
     "keybindings": [
+      { "command": "linqRunner.notebook.run", "key": "shift+enter", "when": "notebookEditorFocused && notebookType == linqRunner.notebook" },
+      { "command": "linqRunner.notebook.debug", "key": "f5", "when": "notebookEditorFocused && notebookType == linqRunner.notebook && !inDebugMode" },
       {
         "command": "linqRunner.collection.run",
         "key": "shift+enter",
@@ -114,9 +116,20 @@
       }
     ],
     "commands": [
+      { "command": "linqRunner.newNotebook", "title": ".linqnb - Stateful C# Notebook", "category": "Stateful C# notebook with code and Markdown cells", "icon": "$(new-file)" },
+      { "command": "linqRunner.notebook.run", "title": "Run Cell", "icon": "$(play)" },
+      { "command": "linqRunner.notebook.debug", "title": "Debug Cell", "icon": "$(debug-alt)" },
+      { "command": "linqRunner.notebook.runAll", "title": "Run All Cells", "icon": "$(run-all)" },
+      { "command": "linqRunner.notebook.restart", "title": "Restart Kernel", "icon": "$(debug-restart)" },
+      { "command": "linqRunner.notebook.restartAndRunAll", "title": "Restart and Run All", "icon": "$(refresh)" },
+      { "command": "linqRunner.notebook.profile", "title": "Notebook Profile", "icon": "$(account)" },
+      { "command": "linqRunner.notebook.clear", "title": "Clear Cell Results", "icon": "$(clear-all)" },
+      { "command": "linqRunner.notebook.clearAll", "title": "Clear All Notebook Results", "icon": "$(clear-all)" },
+      { "command": "linqRunner.notebook.xml", "title": "XML", "icon": "$(code)" },
+      { "command": "linqRunner.notebook.ui", "title": "Notebook UI", "icon": "$(notebook)" },
       {
         "command": "linqRunner.newCollection",
-        "title": ".linqc",
+        "title": ".linqc - Independent Query Collection",
         "category": "C# notebook collection with shared setup and saved results",
         "icon": "$(new-file)"
       },
@@ -204,7 +217,7 @@
       },
       {
         "command": "linqRunner.newLinqFile",
-        "title": ".linq",
+        "title": ".linq - C# Script",
         "category": "Single C# / LINQ script",
         "icon": "$(new-file)"
       }
@@ -230,6 +243,7 @@
       }
     ],
     "notebooks": [
+      { "type": "linqRunner.notebook", "displayName": "Another LINQ Tool Stateful Notebook", "selector": [{ "filenamePattern": "*.linqnb" }, { "filenamePattern": "*.csxnb" }] },
       {
         "type": "linqRunner.collection",
         "displayName": "Another LINQ Tool Collection",
@@ -245,6 +259,12 @@
     ],
     "menus": {
       "notebook/toolbar": [
+        { "command": "linqRunner.notebook.profile", "when": "notebookType == linqRunner.notebook", "group": "navigation@1" },
+        { "command": "linqRunner.notebook.runAll", "when": "notebookType == linqRunner.notebook", "group": "navigation@2" },
+        { "command": "linqRunner.notebook.restart", "when": "notebookType == linqRunner.notebook", "group": "navigation@3" },
+        { "command": "linqRunner.notebook.restartAndRunAll", "when": "notebookType == linqRunner.notebook", "group": "navigation@4" },
+        { "command": "linqRunner.notebook.clearAll", "when": "notebookType == linqRunner.notebook", "group": "navigation@5" },
+        { "command": "linqRunner.notebook.xml", "when": "notebookType == linqRunner.notebook", "group": "navigation@6" },
         {
           "command": "linqRunner.collection.profile",
           "when": "notebookType == linqRunner.collection",
@@ -272,6 +292,9 @@
         }
       ],
       "notebook/cell/title": [
+        { "command": "linqRunner.notebook.run", "when": "notebookType == linqRunner.notebook && notebookCellType == code", "group": "inline@1" },
+        { "command": "linqRunner.notebook.debug", "when": "notebookType == linqRunner.notebook && notebookCellType == code", "group": "inline@2" },
+        { "command": "linqRunner.notebook.clear", "when": "notebookType == linqRunner.notebook && notebookCellType == code", "group": "inline@3" },
         {
           "command": "linqRunner.collection.collapse",
           "when": "notebookType == linqRunner.collection && !notebookCellInputIsCollapsed",
@@ -299,6 +322,7 @@
         }
       ],
       "editor/title": [
+        { "command": "linqRunner.notebook.ui", "when": "resourceExtname == .linqnb || resourceExtname == .csxnb", "group": "navigation" },
         {
           "command": "linqRunner.collection.ui",
           "when": "resourceExtname == .linqc || resourceExtname == .csxc",
@@ -321,6 +345,7 @@
         }
       ],
       "explorer/context": [
+        { "command": "linqRunner.newNotebook", "group": "navigation@92" },
         {
           "command": "linqRunner.newLinqFile",
           "group": "navigation@90"
@@ -331,6 +356,7 @@
         }
       ],
       "file/newFile": [
+        { "command": "linqRunner.newNotebook" },
         {
           "command": "linqRunner.newCollection"
         },
@@ -381,7 +407,8 @@
   "scripts": {
     "build:runner": "node ./scripts/build-runner.js",
     "compile": "tsc -p ./",
-    "test": "npm run compile && node --test scripts/collection.test.js",
+    "test": "npm run compile && node --test scripts/collection.test.js scripts/notebook.test.js",
+    "test:stateful": "dotnet build ../runner/LinqRunner --nologo && npm run compile && node --test scripts/stateful.test.js",
     "test:integration": "npm run compile && node scripts/run-collection-integration.js",
     "watch": "tsc -watch -p ./",
     "vscode:prepublish": "npm run build:runner && npm run compile",

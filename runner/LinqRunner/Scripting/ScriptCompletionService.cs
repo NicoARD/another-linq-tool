@@ -20,7 +20,8 @@ public static class ScriptCompletionService
         IReadOnlyList<string> packages,
         DbContextRequest dbRequest,
         bool namespacesOnly,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool stateful = false)
     {
         try
         {
@@ -57,7 +58,9 @@ public static class ScriptCompletionService
                 .AddReferences(loaded.References)
                 .WithImports(ScriptExecutor.DefaultImports.Concat(effectiveImports));
 
-            var script = CSharpScript.Create<object>(document.Source, options, globalsType);
+            var script = stateful && ScriptExecutor.NotebookState is not null
+                ? ScriptExecutor.NotebookState.Script.ContinueWith<object>(document.Source, options)
+                : CSharpScript.Create<object>(document.Source, options, globalsType);
             var compilation = script.GetCompilation();
 
             if (namespacesOnly)

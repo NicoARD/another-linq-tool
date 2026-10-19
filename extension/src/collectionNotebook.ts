@@ -22,7 +22,7 @@ export function collectionPrelude(cell: vscode.NotebookCell, profile?: ResolvedP
 function encode(value: string): Uint8Array { return Buffer.from(value, 'utf8'); }
 function decode(value: Uint8Array): string { return Buffer.from(value).toString('utf8'); }
 
-function output(result: ExecuteResult, location: string): vscode.NotebookCellOutput {
+export function output(result: ExecuteResult, location: string): vscode.NotebookCellOutput {
     const body = location === 'panel' ? '' : `<details open><summary>${result.status} - ${result.elapsedMs} ms</summary>${renderBody(result)}</details>`;
     const style = '<style>table{border-collapse:collapse;max-width:100%}th,td{border:1px solid var(--vscode-panel-border);padding:4px 8px;text-align:left;vertical-align:top}pre{white-space:pre-wrap;overflow-wrap:anywhere}.type{opacity:.7;font-size:11px}.error{color:var(--vscode-errorForeground)}details{margin:6px 0}summary{cursor:pointer}</style>';
     return new vscode.NotebookCellOutput([

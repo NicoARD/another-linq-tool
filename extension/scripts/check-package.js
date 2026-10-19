@@ -20,6 +20,8 @@ const requiredEntries = new Set([
     'extension/out/collectionNotebook.js',
     'extension/out/collectionModel.js',
     'extension/out/collectionDebug.js',
+    'extension/out/statefulNotebook.js',
+    'extension/out/notebookModel.js',
     'extension/node_modules/fast-xml-parser/package.json',
 ]);
 

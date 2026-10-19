@@ -20,6 +20,10 @@ public static class ScriptExecutor
 
     // Console redirection is process-global, so executions are serialized.
     private static readonly SemaphoreSlim ExecutionGate = new(1, 1);
+    public static ScriptState<object>? NotebookState { get; private set; }
+    private static object? notebookContext;
+    private static Type? notebookGlobalsType;
+    private static object? notebookGlobals;
 
     internal static readonly string[] DefaultImports =
     [
@@ -41,7 +45,8 @@ public static class ScriptExecutor
         CancellationToken cancellationToken,
         string? debugSourcePath = null,
         int debugSourceOffset = 0,
-        string? debugSourceChecksum = null)
+        string? debugSourceChecksum = null,
+        bool stateful = false)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -138,15 +143,15 @@ public static class ScriptExecutor
         using var sqlCapture = new EfCoreCommandCapture();
 
         // Build the user's DbContext (if configured) and expose it to the script as the `Db` global.
-        object? dbContext = null;
-        Type? globalsType = null;
-        object? globals = null;
+        object? dbContext = stateful ? notebookContext : null;
+        Type? globalsType = stateful ? notebookGlobalsType : null;
+        object? globals = stateful ? notebookGlobals : null;
         IReadOnlyList<string> effectiveImports = imports
             .Concat(document.Namespaces)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-        if (dbRequest.IsConfigured)
+        if (dbRequest.IsConfigured && dbContext is null)
         {
             try
             {
@@ -161,6 +166,12 @@ public static class ScriptExecutor
             globals = Activator.CreateInstance(globalsType);
             globalsType.GetField("Db")!.SetValue(globals, dbContext);
             assemblyLoader.RegisterDependency(dbContext.GetType().Assembly);
+            if (stateful)
+            {
+                notebookContext = dbContext;
+                notebookGlobalsType = globalsType;
+                notebookGlobals = globals;
+            }
 
             // Ensure EF Core extension methods (ToListAsync, EnsureCreated, ...) are in scope.
             if (!effectiveImports.Contains("Microsoft.EntityFrameworkCore"))
@@ -174,6 +185,10 @@ public static class ScriptExecutor
             .AddReferences(typeof(Api.DumpExtensions).Assembly)
             .AddReferences(loaded.References)
             .WithImports(DefaultImports.Concat(effectiveImports));
+        if (dbContext is not null)
+        {
+            options = options.AddImports("Microsoft.EntityFrameworkCore");
+        }
 
         if (!string.IsNullOrWhiteSpace(debugSourcePath))
         {
@@ -188,7 +203,11 @@ public static class ScriptExecutor
             : new MemoryStream(System.Text.Encoding.UTF8.GetBytes(source));
         try
         {
-            script = encodedDebugSource is null
+            script = stateful && NotebookState is not null
+                ? encodedDebugSource is null
+                    ? NotebookState.Script.ContinueWith<object>(source, options)
+                    : NotebookState.Script.ContinueWith<object>(encodedDebugSource, options)
+                : encodedDebugSource is null
                 ? CSharpScript.Create<object>(source, options, globalsType, assemblyLoader)
                 : CSharpScript.Create<object>(encodedDebugSource, options, globalsType, assemblyLoader);
         }
@@ -201,7 +220,7 @@ public static class ScriptExecutor
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         if (errors.Count > 0)
         {
-            await DisposeContextAsync(dbContext);
+            if (!stateful) await DisposeContextAsync(dbContext);
             return new ExecuteResult
             {
                 Status = "compileError",
@@ -223,7 +242,10 @@ public static class ScriptExecutor
             Console.SetError(captured);
             DumpSink.Current = sink;
 
-            var state = await script.RunAsync(globals: globals, catchException: _ => true, cancellationToken);
+            var state = stateful && NotebookState is not null
+                ? await script.RunFromAsync(NotebookState, catchException: _ => true, cancellationToken)
+                : await script.RunAsync(globals: globals, catchException: _ => true, cancellationToken);
+            if (stateful) NotebookState = state;
 
             if (state.Exception is not null)
             {
@@ -265,7 +287,7 @@ public static class ScriptExecutor
             Console.SetError(originalError);
             DumpSink.Current = null;
             ExecutionGate.Release();
-            await DisposeContextAsync(dbContext);
+            if (!stateful) await DisposeContextAsync(dbContext);
         }
     }
 

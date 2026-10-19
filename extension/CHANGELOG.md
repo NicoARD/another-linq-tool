@@ -2,6 +2,15 @@
 
 All notable changes to Another LINQ Tool are documented in this file.
 
+## 1.5.1
+
+- Add `.linqnb` and `.csxnb` stateful C# notebooks with Markdown cells, per-notebook kernels, shared variables/imports/DbContext, ordered execution, live completion, saved outputs, restart controls, and cell debugging.
+- Start new notebooks with an editable `@namespace System.Text` block with namespace-name IntelliSense and two code examples, without a prelude or default Notes Markdown cell.
+- Preserve code, Markdown, latest results, and execution counts in XML; reopening keeps saved outputs but starts a fresh kernel. Clearing outputs does not reset live variables.
+- Isolate notebook cancellation and restart, stop Run All at the first failure, and fix a runner restart race that could dispose a replacement connection.
+- Make New File labels descriptive for single scripts, independent query collections, and stateful notebooks.
+- Document stateful notebook execution and debugger limitations, and add format, session lifecycle, cancellation-isolation, and native notebook/debugger regression checks.
+
 ## 1.5.0
 
 - Add `.linqc` and `.csxc` script collections: native VS Code notebooks backed by XML, with collection-wide profiles and independently runnable script blocks.

@@ -42,6 +42,9 @@ public sealed class RunnerService
     [JsonRpcMethod("ping")]
     public string Ping() => "pong";
 
+    [JsonRpcMethod("notebookVariables")]
+    public string[] NotebookVariables() => ScriptExecutor.NotebookState?.Variables.Select(variable => variable.Name).ToArray() ?? [];
+
     [JsonRpcMethod("execute", UseSingleObjectParameterDeserialization = true)]
     public Task<ExecuteResult> Execute(ExecuteParams parameters, CancellationToken cancellationToken) =>
         ScriptExecutor.ExecuteAsync(
@@ -63,7 +66,8 @@ public sealed class RunnerService
             cancellationToken,
             parameters.DebugSourcePath,
             parameters.DebugSourceOffset,
-            parameters.DebugSourceChecksum);
+            parameters.DebugSourceChecksum,
+            parameters.Stateful);
 
     [JsonRpcMethod("complete", UseSingleObjectParameterDeserialization = true)]
     public Task<CompletionResult> Complete(CompleteParams parameters, CancellationToken cancellationToken) =>
@@ -82,7 +86,8 @@ public sealed class RunnerService
                 EfCoreVersion = parameters.EfCoreVersion,
             },
             parameters.NamespacesOnly,
-            cancellationToken);
+            cancellationToken,
+            parameters.Stateful);
 
     [JsonRpcMethod("shutdown")]
     public void Shutdown() => _ = Task.Run(async () =>
@@ -119,6 +124,7 @@ public sealed class InitializeResult
 
 public sealed class ExecuteParams
 {
+    public bool Stateful { get; set; }
     public string? Source { get; set; }
     public int? RowLimit { get; set; }
     public string[]? Assemblies { get; set; }
@@ -138,6 +144,7 @@ public sealed class ExecuteParams
 
 public sealed class CompleteParams
 {
+    public bool Stateful { get; set; }
     public string? Source { get; set; }
     public int Position { get; set; }
     public string[]? Assemblies { get; set; }

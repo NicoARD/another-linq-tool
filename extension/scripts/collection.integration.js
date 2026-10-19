@@ -31,7 +31,7 @@ exports.run = async () => {
         assert.deepEqual(await fs.readdir(creationDirectory.fsPath), []);
         await fs.rmdir(creationDirectory.fsPath);
         results.push('New collection matches the script workflow: untitled notebook, Explorer folder, unique filenames, no disk writes');
-        await vscode.workspace.getConfiguration('linqRunner').update('runnerPath', path.join(root, 'runner', 'net8.0', 'LinqRunner.dll'), vscode.ConfigurationTarget.Global);
+        await vscode.workspace.getConfiguration('linqRunner').update('runnerPath', process.env.LINQ_TEST_RUNNER || path.join(root, 'runner', 'net8.0', 'LinqRunner.dll'), vscode.ConfigurationTarget.Global);
         const { createCollection, writeCollection, parseCollection } = require('../out/collectionModel');
         const collection = createCollection();
         collection.cells[0].source = 'var shared = new StringBuilder("40").Length + 38;';
@@ -169,6 +169,7 @@ exports.run = async () => {
             vscode.debug.removeBreakpoints([breakpoint]);
             if (vscode.debug.activeDebugSession) { await vscode.debug.stopDebugging(vscode.debug.activeDebugSession); }
         }
+        results.push(...await require('./stateful.integration').run());
         if (report) { await fs.writeFile(report, JSON.stringify({ success: true, results }, null, 2)); }
         console.log(results.join('\n'));
     } catch (error) {

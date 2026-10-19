@@ -9,6 +9,7 @@ import { ConfigPanel } from './configPanel';
 import { resolveManagedRunner, selectRunnerFramework } from './runtimeManager';
 import { registerLanguageModelTools } from './lmTools';
 import { CollectionNotebook, collectionOptions, collectionPrelude, collectionType } from './collectionNotebook';
+import { StatefulNotebook, statefulType } from './statefulNotebook';
 let client: RunnerClient | undefined;
 let clientLaunchKey: string | undefined;
 let output: vscode.OutputChannel;
@@ -36,6 +37,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(new CollectionNotebook(context, profiles, profile => getClient(
         context, profile?.assemblies ?? [], profile?.packages ?? [], profile?.targetFramework,
         profile?.efCoreVersion, profile?.provider,
+    )));
+    context.subscriptions.push(new StatefulNotebook(context, profiles, profile => getClient(
+        context, profile?.assemblies ?? [], profile?.packages ?? [], profile?.targetFramework,
+        profile?.efCoreVersion, profile?.provider, true,
     )));
 
     context.subscriptions.push(
@@ -121,6 +126,8 @@ async function provideCompletionItems(
     position: vscode.Position,
     cancellationToken: vscode.CancellationToken,
 ): Promise<vscode.CompletionItem[] | undefined> {
+    if (vscode.workspace.notebookDocuments.some(notebook => notebook.notebookType === statefulType
+        && notebook.getCells().some(cell => cell.document.uri.toString() === document.uri.toString()))) { return undefined; }
     const collection = vscode.workspace.notebookDocuments.find(notebook => notebook.notebookType === collectionType
         && notebook.getCells().some(cell => cell.document.uri.toString() === document.uri.toString()));
     if (collection) {
@@ -269,6 +276,7 @@ async function getClient(
     targetFramework?: 'net10.0' | 'net11.0',
     efCoreVersion?: string,
     provider?: string,
+    isolated = false,
 ): Promise<RunnerClient> {
     const config = vscode.workspace.getConfiguration('linqRunner');
     const dotnetPath = config.get<string>('dotnetPath', 'dotnet');
@@ -280,6 +288,11 @@ async function getClient(
             selectRunnerFramework(assemblies, targetFramework),
             (message) => output.appendLine(message),
         );
+    if (isolated) {
+        prepareRunnerLaunch(launch);
+        return new RunnerClient(launch.executable, launch.args, message => output.appendLine(message),
+            vscode.workspace.workspaceFolders?.[0]?.uri.fsPath, launch.environment);
+    }
     const dependencyKey = fingerprintAssemblies(assemblies);
     const launchKey = JSON.stringify([
         launch.executable,

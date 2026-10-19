@@ -129,6 +129,7 @@ export class RunnerClient {
         db: DbOptions,
         cancellationToken?: CancellationToken,
         debug?: { sourcePath: string; sourceOffset: number; sourceChecksum: string },
+        stateful = false,
     ): Promise<ExecuteResult> {
         await this.ensureStarted();
         let forcedStop: NodeJS.Timeout | undefined;
@@ -146,6 +147,7 @@ export class RunnerClient {
                 'execute',
                 {
                     source,
+                    stateful,
                     rowLimit,
                     assemblies,
                     imports,
@@ -174,11 +176,12 @@ export class RunnerClient {
         db: DbOptions,
         namespacesOnly: boolean,
         cancellationToken?: CancellationToken,
+        stateful = false,
     ): Promise<CompletionResult> {
         await this.ensureStarted();
         return this.connection!.sendRequest<CompletionResult>(
             'complete',
-            { source, position, assemblies, imports, packages, ...db, namespacesOnly },
+            { source, position, assemblies, imports, packages, ...db, namespacesOnly, stateful },
             cancellationToken,
         );
     }
@@ -186,6 +189,11 @@ export class RunnerClient {
     async restart(): Promise<void> {
         this.dispose();
         await this.ensureStarted();
+    }
+
+    async notebookVariables(): Promise<string[]> {
+        await this.ensureStarted();
+        return this.connection!.sendRequest<string[]>('notebookVariables');
     }
 
     async discoverContexts(assemblies: string[]): Promise<DiscoverContextsResult> {
@@ -238,6 +246,7 @@ export class RunnerClient {
         proc.on('error', (err) => this.log(`Runner failed to start: ${err.message}`));
         proc.on('exit', (code) => {
             this.log(`Runner exited (code ${code}).`);
+            if (this.proc !== proc) { return; }
             this.connection?.dispose();
             this.connection = undefined;
             this.proc = undefined;
